@@ -11,7 +11,7 @@ impl Connection {
     /// # Errors 
     /// An error will occur if it's not possible create a new socket. It's common the address/port is 
     /// not available, returning an error. 
-    fn new() -> Result<Self, std::io::Error> {
+    pub fn new() -> Result<Self, std::io::Error> {
         let socket = TcpListener::bind("127.0.0.1:7878")?;
         Ok(Self {socket})
     }
