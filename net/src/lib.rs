@@ -5,6 +5,16 @@ pub struct Connection {
     socket: TcpListener,
 }
 
+pub struct ConnectionStream {
+    stream: TcpStream,
+}
+
+impl ConnectionStream {
+    pub fn get_stream(&self) -> &TcpStream {
+        &self.stream
+    }
+}
+
 impl Connection {
     /// Creates a new connection endpoint at `127.0.0.1:7878` by default.
     /// 
@@ -22,8 +32,8 @@ impl Connection {
     /// 
     /// # Errors 
     /// An error will occur if it's not possible to accept the incoming connection.  
-    pub fn connect(&self) -> Result<TcpStream, std::io::Error> {
+    pub fn connect(&self) -> Result<ConnectionStream, std::io::Error> {
         let (stream, _) = self.socket.accept()?; 
-        Ok(stream)
+        Ok(ConnectionStream { stream })
     }
 }
