@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 net = { path = "../net"}
+http-parser = { path = "../http-parser"}

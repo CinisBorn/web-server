@@ -1,5 +1,5 @@
 use std::io::Read;
-
+use http_parser::HttpParser;
 use net::Connection;
 
 fn main() {
@@ -11,5 +11,6 @@ fn main() {
 
         stream.get_stream().read_to_string(&mut buf).unwrap();
         println!("{}", buf);
+        dbg!(stream.parser(buf.as_bytes()).unwrap());
     }
 }

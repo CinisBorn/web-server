@@ -1,4 +1,5 @@
 use std::{net::{TcpListener, TcpStream}};
+use http_parser::HttpParser;
 
 /// The connection between client and server 
 pub struct Connection {
@@ -8,6 +9,8 @@ pub struct Connection {
 pub struct ConnectionStream {
     stream: TcpStream,
 }
+
+impl HttpParser for ConnectionStream {}
 
 impl ConnectionStream {
     pub fn get_stream(&self) -> &TcpStream {

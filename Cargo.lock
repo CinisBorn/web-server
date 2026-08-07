@@ -9,10 +9,14 @@ version = "0.1.0"
 [[package]]
 name = "net"
 version = "0.1.0"
+dependencies = [
+ "http-parser",
+]
 
 [[package]]
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "http-parser",
  "net",
 ]
