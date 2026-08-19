@@ -3,20 +3,20 @@
 version = 4
 
 [[package]]
-name = "http-parser"
-version = "0.1.0"
-
-[[package]]
-name = "net"
+name = "connection"
 version = "0.1.0"
 dependencies = [
  "http-parser",
 ]
 
 [[package]]
+name = "http-parser"
+version = "0.1.0"
+
+[[package]]
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "connection",
  "http-parser",
- "net",
 ]

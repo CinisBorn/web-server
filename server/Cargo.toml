@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-net = { path = "../net"}
+connection = { path = "../connection"}
 http-parser = { path = "../http-parser"}

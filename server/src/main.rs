@@ -1,6 +1,6 @@
 use std::io::Read;
 use http_parser::HttpParser;
-use net::Connection;
+use connection::Connection;
 
 fn main() {
     let conn = Connection::new().unwrap();
