@@ -3,10 +3,7 @@
 //! This crate provides types and utilities for TCP handling.
 
 use http_parser::HttpParser;
-use std::{
-    net::{IpAddr, Ipv4Addr, TcpListener, TcpStream},
-    os::unix::net::SocketAddr,
-};
+use std::net::{TcpListener, TcpStream};
 
 /// A TCP connection Listener.
 pub struct Connection {
