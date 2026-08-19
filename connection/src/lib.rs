@@ -1,11 +1,16 @@
+//! TCP connection handling.
+//! 
+//! This crate provides types and utilities for TCP handling. 
+
 use std::{net::{TcpListener, TcpStream}};
 use http_parser::HttpParser;
 
-/// The connection between client and server 
+/// A TCP connection Listener.  
 pub struct Connection {
     socket: TcpListener,
 }
 
+/// A TCP connection stream
 pub struct ConnectionStream {
     stream: TcpStream,
 }
@@ -22,8 +27,8 @@ impl Connection {
     /// Creates a new connection endpoint at `127.0.0.1:7878` by default.
     /// 
     /// # Errors 
-    /// An error will occur if it's not possible create a new socket. It's common the address/port is 
-    /// not available, returning an error. 
+    /// 
+    /// An *io* error is returned if a related error is triggered. 
     pub fn new() -> Result<Self, std::io::Error> {
         let socket = TcpListener::bind("127.0.0.1:7878")?;
         Ok(Self {socket})
