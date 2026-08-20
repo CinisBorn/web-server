@@ -5,6 +5,10 @@
 use http_parser::HttpParser;
 use std::net::{TcpListener, TcpStream};
 
+use error::ConnectionError;
+
+mod error;
+
 /// A TCP connection Listener.
 pub struct Connection {
     socket: TcpListener,
@@ -30,7 +34,7 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
-    pub fn new() -> Result<Self, std::io::Error> {
+    pub fn new() -> Result<Self, ConnectionError> {
         let env = std::env::var_os("WS");
 
         if let Some(env) = env {

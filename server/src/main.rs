@@ -3,7 +3,10 @@ use http_parser::HttpParser;
 use connection::Connection;
 
 fn main() {
-    let conn = Connection::new().unwrap();
+    let conn = match Connection::new() {
+        Ok(conn) => conn,
+        Err(e) => panic!("{}", e.to_string()),
+    };
 
     loop {
         let stream = conn.connect().unwrap();
