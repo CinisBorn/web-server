@@ -1,9 +1,12 @@
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
 
+#[derive(Debug)]
 pub enum ConnectionError {
     InvalidEnv(String),
     Io(std::io::Error)
 }
+
+impl Error for ConnectionError {}
 
 impl Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -28,8 +28,8 @@ impl ConnectionStream {
 }
 
 impl Connection {
-    /// Creates a new connection endpoint at the specified address from `WS` environment variable. If `WS` isn't present,
-    /// the address: `127.0.0.1:7878` is the default.
+    /// Creates a new connection endpoint at the specified address from `WS` environment variable. 
+    /// If `WS` isn't present, the address: `127.0.0.1:7878` is the default.
     ///
     /// # Errors
     ///
