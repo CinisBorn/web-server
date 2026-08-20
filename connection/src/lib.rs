@@ -8,9 +8,7 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
-use error::ConnectionError;
-
-mod error;
+use error::types::ServerError;
 
 /// A TCP connection Listener.
 pub struct Connection {
@@ -31,10 +29,9 @@ impl ConnectionStream {
     ///
     /// # Note
     /// Because of bad design choices, it will panic instead of return a `Result` containing an error.
-    pub fn parse_request(&mut self) -> Request {
+    pub fn parse_request(&mut self) -> Result<Request, ServerError> {
         let _ = self.stream.read_to_string(&mut self.buf);
-        // FIX: Centralize Error handling in a generic way, preventing type constraint handling.
-        self.parser(self.buf.as_bytes()).unwrap()
+        Ok(self.parser(self.buf.as_bytes())?)
     }
 }
 impl HttpParser for ConnectionStream {}
@@ -46,7 +43,7 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
-    pub fn new() -> Result<Self, ConnectionError> {
+    pub fn new() -> Result<Self, ServerError> {
         let env = std::env::var_os("WS");
 
         if let Some(env) = env {

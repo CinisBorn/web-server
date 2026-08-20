@@ -6,12 +6,20 @@ version = 4
 name = "connection"
 version = "0.1.0"
 dependencies = [
+ "error",
  "http-parser",
 ]
 
 [[package]]
+name = "error"
+version = "0.1.0"
+
+[[package]]
 name = "http-parser"
 version = "0.1.0"
+dependencies = [
+ "error",
+]
 
 [[package]]
 name = "server"

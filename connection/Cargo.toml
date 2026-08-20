@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 http-parser = {path = "../http-parser"}
+error = {path = "../error"}
