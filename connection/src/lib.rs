@@ -2,8 +2,8 @@
 //!
 //! This crate provides types and utilities for TCP handling.
 
-use http_parser::HttpParser;
-use std::net::{TcpListener, TcpStream};
+use http_parser::{HttpParser, Request};
+use std::{io::Read, net::{TcpListener, TcpStream}};
 
 use error::ConnectionError;
 
@@ -17,15 +17,24 @@ pub struct Connection {
 /// A TCP connection stream
 pub struct ConnectionStream {
     stream: TcpStream,
+    buf: String 
 }
-
-impl HttpParser for ConnectionStream {}
 
 impl ConnectionStream {
-    pub fn get_stream(&self) -> &TcpStream {
-        &self.stream
+    /// Parses the raw incoming request into HTTP request. 
+    /// 
+    /// # Errors 
+    /// It will return an error if a parser error is triggered.  
+    /// 
+    /// # Note
+    /// Because of bad design choices, it will panic instead of return a `Result` containing an error. 
+    pub fn parse_request(&mut self) -> Request {
+        let _ = self.stream.read_to_string(&mut self.buf);
+        // FIX: Centralize Error handling in a generic way, preventing type constraint handling. 
+        self.parser(self.buf.as_bytes()).unwrap() 
     }
 }
+impl HttpParser for ConnectionStream {}
 
 impl Connection {
     /// Creates a new connection endpoint at the specified address from `WS` environment variable. 
@@ -59,6 +68,6 @@ impl Connection {
     /// An error will occur if it's not possible to accept the incoming connection.
     pub fn connect(&self) -> Result<ConnectionStream, std::io::Error> {
         let (stream, _) = self.socket.accept()?;
-        Ok(ConnectionStream { stream })
+        Ok(ConnectionStream { stream, buf: String::new() })
     }
 }
