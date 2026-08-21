@@ -20,7 +20,7 @@ pub struct Connection {
 /// A TCP connection stream
 pub struct ConnectionStream {
     stream: TcpStream,
-    buf: String,
+    buf: Vec<u8>,
 }
 
 impl ConnectionStream {
@@ -32,8 +32,16 @@ impl ConnectionStream {
     /// # Note
     /// Because of bad design choices, it will panic instead of return a `Result` containing an error.
     pub fn parse_request(&mut self) -> Result<Request, ParserError> {
-        let _ = self.stream.read_to_string(&mut self.buf);
-        Ok(self.parser(self.buf.as_bytes())?)
+        let bytes = self.stream.read(&mut self.buf);
+
+        match bytes {
+            Ok(0) => unimplemented!(),
+            Err(_) => unimplemented!(),
+            Ok(n) => {
+                println!("{}", String::from_utf8_lossy(&self.buf[..n])); // for debugging purposes
+                Ok(self.parser(&self.buf[..n])?)
+            },
+        }
     }
 }
 impl HttpParser for ConnectionStream {}
@@ -72,7 +80,7 @@ impl Connection {
         let (stream, _) = self.socket.accept()?;
         Ok(ConnectionStream {
             stream,
-            buf: String::new(),
+            buf: Vec::from([0u8; 8192]), // 8 Kib
         })
     }
 }
