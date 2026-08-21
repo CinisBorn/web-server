@@ -1,6 +1,7 @@
 //! TCP connection handling.
 //!
 //! This crate provides types and utilities for TCP handling.
+mod error;
 
 use http_parser::error::ParserError;
 use http_parser::{HttpParser, Request};
@@ -8,6 +9,8 @@ use std::{
     io::Read,
     net::{TcpListener, TcpStream},
 };
+
+use crate::error::ConnectionError;
 
 /// A TCP connection Listener.
 pub struct Connection {
@@ -42,7 +45,7 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
-    pub fn new() -> Result<Self, std::io::Error> {
+    pub fn new() -> Result<Self, ConnectionError> {
         let env = std::env::var_os("WS");
 
         if let Some(env) = env {
