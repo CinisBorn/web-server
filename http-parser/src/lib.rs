@@ -1,5 +1,7 @@
 use std::io::{BufRead, BufReader};
-use error::types:: ParserError;
+use error::ParserError;
+
+pub mod error;
 
 #[derive(Debug)]
 pub enum Method {

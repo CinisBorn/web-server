@@ -2,13 +2,12 @@
 //!
 //! This crate provides types and utilities for TCP handling.
 
+use http_parser::error::ParserError;
 use http_parser::{HttpParser, Request};
 use std::{
     io::Read,
     net::{TcpListener, TcpStream},
 };
-
-use error::types::ServerError;
 
 /// A TCP connection Listener.
 pub struct Connection {
@@ -29,7 +28,7 @@ impl ConnectionStream {
     ///
     /// # Note
     /// Because of bad design choices, it will panic instead of return a `Result` containing an error.
-    pub fn parse_request(&mut self) -> Result<Request, ServerError> {
+    pub fn parse_request(&mut self) -> Result<Request, ParserError> {
         let _ = self.stream.read_to_string(&mut self.buf);
         Ok(self.parser(self.buf.as_bytes())?)
     }
@@ -43,7 +42,7 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
-    pub fn new() -> Result<Self, ServerError> {
+    pub fn new() -> Result<Self, std::io::Error> {
         let env = std::env::var_os("WS");
 
         if let Some(env) = env {
