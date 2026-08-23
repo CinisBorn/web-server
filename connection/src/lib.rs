@@ -40,7 +40,7 @@ impl ConnectionStream {
             Ok(n) => {
                 println!("{}", String::from_utf8_lossy(&self.buf[..n])); // for debugging purposes
                 Ok(self.parser(&self.buf[..n])?)
-            },
+            }
         }
     }
 }
@@ -76,7 +76,7 @@ impl Connection {
     ///
     /// # Errors
     /// An error will occur if it's not possible to accept the incoming connection.
-    pub fn connect(&self) -> Result<ConnectionStream, std::io::Error> {
+    pub fn connect(&self) -> Result<ConnectionStream, ConnectionError> {
         let (stream, _) = self.socket.accept()?;
         Ok(ConnectionStream {
             stream,
