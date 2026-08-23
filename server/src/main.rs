@@ -7,5 +7,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         let mut stream = conn.connect()?;
         let request = stream.parse_request();
         dbg!(request.unwrap());
+        stream.send_response();
     }
 }

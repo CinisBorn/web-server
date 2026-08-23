@@ -5,6 +5,7 @@ mod error;
 
 use http_parser::error::ParserError;
 use http_parser::{HttpParser, Request};
+use std::io::Write;
 use std::{
     io::Read,
     net::{TcpListener, TcpStream},
@@ -42,6 +43,16 @@ impl ConnectionStream {
                 Ok(self.parser(&self.buf[..n])?)
             }
         }
+    }
+
+    pub fn send_response(&mut self) {
+        let _ = self.stream.write(
+        b"HTTP/1.1 200 OK\r\n\
+        Content-Type: text/plain\r\n\
+        Content-Length: 5\r\n\
+        \r\n\
+        Hello
+        ");
     }
 }
 impl HttpParser for ConnectionStream {}
