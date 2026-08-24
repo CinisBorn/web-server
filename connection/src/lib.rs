@@ -14,11 +14,13 @@ use std::{
 use crate::error::ConnectionError;
 
 /// A TCP connection Listener.
+#[derive(Debug)]
 pub struct Connection {
     socket: TcpListener,
 }
 
 /// A TCP connection stream
+#[derive(Debug)]
 pub struct ConnectionStream {
     stream: TcpStream,
     buf: Vec<u8>,

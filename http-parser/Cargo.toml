@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 error = {path = "../error"}
+
+[lints]
+workspace = true

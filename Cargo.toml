@@ -1,3 +1,12 @@
 [workspace]
 resolver = "3"
 members = ["http-parser","connection", "server", "error"]
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

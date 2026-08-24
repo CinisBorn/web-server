@@ -1,17 +1,30 @@
+//! The HTTP parser.
+//! 
+//! Provides utilities, types, traits, structs, and other useful tools for HTTP parsing.  
+
 use std::io::{BufRead, BufReader};
 use error::ParserError;
 
 pub mod error;
 
+/// The HTTP method of `Request`.
 #[derive(Debug)]
 pub enum Method {
+    /// a
     GET, 
+    /// b
     POST,
+    /// b
     DELETE,
+    /// b
     PATCH,
+    /// b
     CONNECT, 
+    /// b
     OPTIONS,
+    /// b
     PUT,
+    /// b
     HEAD 
 }
 
@@ -46,6 +59,7 @@ impl Request {
     }
 }
 
+/// The `HTTPParser` trait allows a type parser a HTTP message.
 pub trait HttpParser {
     /// Parses a HTTP request returning a `Request` struct.  
     fn parser(&self, raw_txt: &[u8]) -> Result<Request, ParserError> {
