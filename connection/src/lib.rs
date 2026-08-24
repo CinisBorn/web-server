@@ -5,6 +5,7 @@ mod error;
 
 use http_parser::error::ParserError;
 use http_parser::{HttpParser, Request};
+use std::io::ErrorKind::Interrupted;
 use std::io::Write;
 use std::{
     io::Read,
@@ -35,15 +36,13 @@ impl ConnectionStream {
     /// # Note
     /// Because of bad design choices, it will panic instead of return a `Result` containing an error.
     pub fn parse_request(&mut self) -> Result<Request, ParserError> {
-        let bytes = self.stream.read(&mut self.buf);
-
-        match bytes {
-            Ok(0) => unimplemented!(),
-            Err(_) => unimplemented!(),
-            Ok(n) => {
-                println!("{}", String::from_utf8_lossy(&self.buf[..n])); // for debugging purposes
-                Ok(self.parser(&self.buf[..n])?)
-            }
+        loop {
+            match self.stream.read(&mut self.buf) {
+                Ok(0) => return Err(ParserError::ConnClosed),
+                Ok(n) => return Ok(self.parser(&self.buf[..n])?),
+                Err(e) if e.kind() == Interrupted => continue,
+                Err(e) => return Err(ParserError::Io(e))
+            };
         }
     }
 
