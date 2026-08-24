@@ -45,6 +45,7 @@ impl ConnectionStream {
         }
     }
 
+    /// Sends a reponse to client
     pub fn send_response(&mut self) {
         let _ = self.stream.write(
         b"HTTP/1.1 200 OK\r\n\
