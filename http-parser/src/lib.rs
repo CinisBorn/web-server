@@ -65,7 +65,7 @@ pub trait HttpParser {
         let mut user_agent = String::new();
         
         for line in lines {
-            if line == "" {
+            if line.is_empty() {
                 continue 
             }
             
@@ -93,9 +93,7 @@ pub trait HttpParser {
 }
 
 // Maps the method from http request to a respective `Enum` variant. 
-fn map_method(method: &String) -> Result<Method, ParserError> {
-    let method = method.as_str();
-    
+fn map_method(method: &str) -> Result<Method, ParserError> {
     match method {
         "GET" => Ok(Method::GET),
         "POST" => Ok(Method::POST),

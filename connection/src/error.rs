@@ -12,7 +12,7 @@ impl std::error::Error for  ConnectionError {}
 impl std::fmt::Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConnectionError::Io(message) => write!(f, "{}", message.to_string())
+            ConnectionError::Io(message) => write!(f, "{}", message)
         }
     }
 }
