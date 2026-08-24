@@ -10,21 +10,21 @@ pub mod error;
 /// The HTTP method of `Request`.
 #[derive(Debug)]
 pub enum Method {
-    /// a
+    /// The GET method.
     GET, 
-    /// b
+    /// The POST method.
     POST,
-    /// b
+    /// The DELETE method.
     DELETE,
-    /// b
+    /// The PATCH method.
     PATCH,
-    /// b
+    /// The CONNECT method.
     CONNECT, 
-    /// b
+    /// The OPTIONS method.
     OPTIONS,
-    /// b
+    /// The PUT method.
     PUT,
-    /// b
+    /// The HEAD method.
     HEAD 
 }
 
