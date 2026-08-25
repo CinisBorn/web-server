@@ -41,7 +41,7 @@ impl ConnectionStream {
                 Ok(0) => return Err(ParserError::ConnClosed),
                 Ok(n) => return Ok(self.parser(&self.buf[..n])?),
                 Err(e) if e.kind() == Interrupted => continue,
-                Err(e) => return Err(ParserError::Io(e))
+                Err(e) => return Err(ParserError::Io(e)),
             };
         }
     }
@@ -49,12 +49,13 @@ impl ConnectionStream {
     /// Sends a reponse to client
     pub fn send_response(&mut self) {
         let _ = self.stream.write(
-        b"HTTP/1.1 200 OK\r\n\
+            b"HTTP/1.1 200 OK\r\n\
         Content-Type: text/plain\r\n\
         Content-Length: 5\r\n\
         \r\n\
         Hello
-        ");
+        ",
+        );
     }
 }
 impl HttpParser for ConnectionStream {}
