@@ -3,7 +3,6 @@
 //! This crate provides types and utilities for TCP handling.
 pub mod error;
 
-use http_parser::{HttpParser};
 use std::io::ErrorKind::Interrupted;
 use std::io::Write;
 use std::{
@@ -64,7 +63,6 @@ impl ConnectionStream {
         );
     }
 }
-impl HttpParser for ConnectionStream {}
 
 impl Connection {
     /// Creates a new connection endpoint at the specified address from `WS` environment variable.
