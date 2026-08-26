@@ -27,16 +27,16 @@ pub struct ConnectionStream {
 
 impl ConnectionStream {
     /// Handle a incoming connection.
-    /// 
+    ///
     /// Attempts to read data from the stream into the internal buffer.
-    /// 
+    ///
     /// Returns `Ok(())` if one or more bytes are successfully read.
-    /// 
-    /// # Errors 
-    /// 
+    ///
+    /// # Errors
+    ///
     /// Returns [`ConnectionError::Closed`] if the client closes the connection.
     /// This is not considered a fatal error and should be handled by the caller.
-    /// 
+    ///
     /// If an [`ErrorKind::Interrupted`] I/O error occurs, the operation is retried.
     ///
     /// Returns [`ConnectionError::Io`] for any other I/O error.
@@ -45,9 +45,9 @@ impl ConnectionStream {
             match self.stream.read(&mut self.buf) {
                 Ok(0) => return Err(ConnectionError::Closed),
                 Ok(_) => return Ok(()),
-                Err(e) if e.kind() == Interrupted => continue,
+                Err(e) if e.kind() == Interrupted => {},
                 Err(e) => return Err(ConnectionError::Io(e)),
-            };
+            }
         }
     }
 
@@ -71,6 +71,10 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
+    /// 
+    /// # Panics 
+    /// 
+    /// Panics if the `WS` environment variable isn't a valid Unicode
     pub fn new() -> Result<Self, ConnectionError> {
         let env = std::env::var_os("WS");
 

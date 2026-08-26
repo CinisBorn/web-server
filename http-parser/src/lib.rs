@@ -62,6 +62,10 @@ impl Request {
 /// The `HTTPParser` trait allows a type parser a HTTP message.
 pub trait HttpParser {
     /// Parses a HTTP request returning a `Request` struct.
+    /// 
+    /// # Errors 
+    /// 
+    /// Returns a `ParserError` if the method isn't known. See [`Method`]
     fn parser(&self, raw_txt: &[u8]) -> Result<Request, ParserError> {
         let buf = BufReader::new(raw_txt);
         let mut lines = buf
@@ -72,7 +76,7 @@ pub trait HttpParser {
         let method = lines.swap_remove(0);
         let method = method
             .split_ascii_whitespace()
-            .map(|word| word.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<String>>()
             .remove(0);
         let method = map_method(&method)?;
@@ -87,8 +91,8 @@ pub trait HttpParser {
             }
 
             let field = line
-                .split(":")
-                .map(|f| f.to_string())
+                .split(':')
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<String>>();
             let value = field[1].trim().to_string();
 
@@ -100,14 +104,14 @@ pub trait HttpParser {
                     // It's a temporary measure
                     panic!("Unknown http field");
                 }
-            };
+            }
         }
 
         Ok(Request {
             method,
-            accept,
             host,
             user_agent,
+            accept
         })
     }
 }

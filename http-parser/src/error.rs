@@ -21,9 +21,9 @@ impl std::error::Error for ParserError {}
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParserError::UnknownMethod(m) => write!(f, "{}", m),
+            ParserError::UnknownMethod(m) => write!(f, "{m}"),
             ParserError::ConnClosed => write!(f, "Connection was closed"),
-            ParserError::Io(m) => write!(f, "{}", m)
+            ParserError::Io(m) => write!(f, "{m}")
         }
     }
 }
