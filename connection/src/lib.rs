@@ -1,10 +1,9 @@
 //! TCP connection handling.
 //!
 //! This crate provides types and utilities for TCP handling.
-mod error;
+pub mod error;
 
-use http_parser::error::ParserError;
-use http_parser::{HttpParser, Request};
+use http_parser::{HttpParser};
 use std::io::ErrorKind::Interrupted;
 use std::io::Write;
 use std::{
@@ -28,20 +27,27 @@ pub struct ConnectionStream {
 }
 
 impl ConnectionStream {
-    /// Parses the raw incoming request into HTTP request.
+    /// Handle a incoming connection.
+    /// 
+    /// Attempts to read data from the stream into the internal buffer.
+    /// 
+    /// Returns `Ok(())` if one or more bytes are successfully read.
+    /// 
+    /// # Errors 
+    /// 
+    /// Returns [`ConnectionError::Closed`] if the client closes the connection.
+    /// This is not considered a fatal error and should be handled by the caller.
+    /// 
+    /// If an [`ErrorKind::Interrupted`] I/O error occurs, the operation is retried.
     ///
-    /// # Errors
-    /// It will return an error if a parser error is triggered.
-    ///
-    /// # Note
-    /// Because of bad design choices, it will panic instead of return a `Result` containing an error.
-    pub fn parse_request(&mut self) -> Result<Request, ParserError> {
+    /// Returns [`ConnectionError::Io`] for any other I/O error.
+    pub fn handle_connection(&mut self) -> Result<(), ConnectionError> {
         loop {
             match self.stream.read(&mut self.buf) {
-                Ok(0) => return Err(ParserError::ConnClosed),
-                Ok(n) => return Ok(self.parser(&self.buf[..n])?),
+                Ok(0) => return Err(ConnectionError::Closed),
+                Ok(_) => return Ok(()),
                 Err(e) if e.kind() == Interrupted => continue,
-                Err(e) => return Err(ParserError::Io(e)),
+                Err(e) => return Err(ConnectionError::Io(e)),
             };
         }
     }

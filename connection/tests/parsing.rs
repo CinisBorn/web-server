@@ -3,14 +3,12 @@ use std::net::Shutdown;
 use std::thread;
 
 use connection::Connection;
-use http_parser::error::ParserError;
-use http_parser::Request;
-
+use connection::error::ConnectionError;
 // server mock
-fn server() -> Result<Request, ParserError> {
+fn server() -> Result<(), ConnectionError> {
     let conn = Connection::new().unwrap();
     let mut stream = conn.connect().unwrap();
-    let req = stream.parse_request();
+    let req = stream.handle_connection();
 
     req
 }
@@ -27,7 +25,7 @@ fn parsing_cancelled_when_connection_is_closed() -> Result<(), ()> {
     match handle_server.join().unwrap() {
         Ok(_) => Err(()),
         Err(e) => match e {
-            ParserError::ConnClosed => Ok(()),
+            ConnectionError::Closed => Ok(()),
             _ => Err(()),
         },
     }

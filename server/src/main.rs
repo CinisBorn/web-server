@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
 
     loop {
         let mut stream = conn.connect()?;
-        let request = stream.parse_request();
+        let request = stream.handle_connection();
         dbg!(request.unwrap());
         stream.send_response();
     }
