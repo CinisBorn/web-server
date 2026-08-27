@@ -2,9 +2,9 @@
 //!
 //! Provides utilities, types, traits, structs, and other useful tools for HTTP parsing.
 
-mod request;
+pub mod request;
 
-use crate::request::{Method, Request};
+use crate::request::{Method, Request, RequestStartLine};
 use error::ParserError;
 use std::io::{BufRead, BufReader};
 
@@ -25,13 +25,16 @@ pub trait HttpParser {
             .collect::<Vec<String>>();
 
         let method = lines.swap_remove(0);
-        let method = method
+        let mut start_line = method
             .split_ascii_whitespace()
             .map(std::string::ToString::to_string)
-            .collect::<Vec<String>>()
-            .remove(0);
-        let method = map_method(&method)?;
+            .collect::<Vec<String>>();
 
+        let method = map_method(&start_line[0])?;
+        let target = start_line[1].clone();
+        let req_start_line = RequestStartLine::new(method, target);
+        start_line.clear();
+     
         let mut accept = String::new();
         let mut host = String::new();
         let mut user_agent = String::new();
@@ -40,7 +43,7 @@ pub trait HttpParser {
             if line.is_empty() {
                 continue;
             }
-
+            dbg!(&line);
             let field = line
                 .split(':')
                 .map(std::string::ToString::to_string)
@@ -58,7 +61,12 @@ pub trait HttpParser {
             }
         }
 
-        Ok(Request::new(method, host, user_agent, accept))
+        Ok(Request::new(
+            req_start_line, 
+            host, 
+            user_agent, 
+            accept
+        ))
     }
 }
 

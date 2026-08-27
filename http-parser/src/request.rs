@@ -1,4 +1,4 @@
-//! Provides tools for client request handling 
+//! Provides tools for client request handling
 
 /// The HTTP method of `Request`.
 #[derive(Debug)]
@@ -25,30 +25,44 @@ pub enum Method {
 /// Represents the client request.
 #[derive(Debug)]
 pub struct Request {
-    method: Method,
+    start_line: RequestStartLine,
     host: String,
     user_agent: String,
     accept: String,
 }
 
+#[derive(Debug)]
+/// The request start line. See more at
+/// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
+/// 
+/// The HTTP version isn't necessary because this parser will forever support only http/1.1
+pub struct RequestStartLine {
+    method: Method,
+    target: String, 
+}
+
+impl RequestStartLine {
+    /// Creates a new instance of `RequestStartLine`. 
+    pub fn new(method: Method, target: String) -> Self {
+        Self { method, target}
+    }
+}
+
 impl Request {
+    /// Creates a new structured client `Request`. 
     pub fn new(
-        method: Method,
-        host: String,
-        user_agent: String,
+        start_line: RequestStartLine, 
+        host: String, 
+        user_agent: String, 
         accept: String
     ) -> Self {
+        
         Self {
-            method, 
-            host, 
+            start_line,
+            host,
             user_agent,
-            accept
+            accept,
         }
-    }
-    
-    /// Retrieves the HTTP method.
-    pub fn method(&self) -> &Method {
-        &self.method
     }
 
     /// Retrieves the host of request.
