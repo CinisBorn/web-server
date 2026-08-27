@@ -2,62 +2,13 @@
 //!
 //! Provides utilities, types, traits, structs, and other useful tools for HTTP parsing.
 
+mod request;
+
+use crate::request::{Method, Request};
 use error::ParserError;
 use std::io::{BufRead, BufReader};
 
 pub mod error;
-
-/// The HTTP method of `Request`.
-#[derive(Debug)]
-pub enum Method {
-    /// The GET method.
-    GET,
-    /// The POST method.
-    POST,
-    /// The DELETE method.
-    DELETE,
-    /// The PATCH method.
-    PATCH,
-    /// The CONNECT method.
-    CONNECT,
-    /// The OPTIONS method.
-    OPTIONS,
-    /// The PUT method.
-    PUT,
-    /// The HEAD method.
-    HEAD,
-}
-
-/// Represents the client request.
-#[derive(Debug)]
-pub struct Request {
-    method: Method,
-    host: String,
-    user_agent: String,
-    accept: String,
-}
-
-impl Request {
-    /// Retrieves the HTTP method.
-    pub fn method(&self) -> &Method {
-        &self.method
-    }
-
-    /// Retrieves the host of request.
-    pub fn host(&self) -> &String {
-        &self.host
-    }
-
-    /// Retrieves the agent of request.
-    pub fn user_agent(&self) -> &String {
-        &self.user_agent
-    }
-
-    /// Retrieves the `accept` field from request.
-    pub fn accept_field(&self) -> &String {
-        &self.accept
-    }
-}
 
 /// The `HTTPParser` trait allows a type parser a HTTP message.
 pub trait HttpParser {
@@ -107,12 +58,7 @@ pub trait HttpParser {
             }
         }
 
-        Ok(Request {
-            method,
-            host,
-            user_agent,
-            accept
-        })
+        Ok(Request::new(method, host, user_agent, accept))
     }
 }
 
