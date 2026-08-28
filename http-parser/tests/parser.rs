@@ -11,7 +11,9 @@ const BASIC_REQUEST: &[u8; 79] = b"GET / HTTP/1.1\r\n\
 struct MockParser();
 
 impl MockParser {
-    fn new() -> Self { Self() }
+    fn new() -> Self {
+        Self()
+    }
 }
 
 impl HttpParser for MockParser {}
@@ -21,7 +23,7 @@ fn request_is_parsed_correctly() {
     let mock = MockParser::new();
     let req = mock.parser(BASIC_REQUEST).unwrap();
 
-    assert_eq!(req.accept_field(), "application/json");
+    assert_eq!(req.accept(), "application/json");
     assert_eq!(req.host(), "127.0.0.1");
 }
 
@@ -29,8 +31,8 @@ fn request_is_parsed_correctly() {
 fn start_line_is_parsed_correctly() {
     let mock = MockParser::new();
     let req = mock.parser(BASIC_REQUEST).unwrap();
-    let start_line = req.get_start_line();
-    
+    let start_line = req.start_line();
+
     assert_eq!(start_line.target(), "/");
     assert_eq!(*start_line.method(), Method::GET);
 }

@@ -74,23 +74,23 @@ impl Request {
         }
     }
 
-    /// Retrieves the host of request.
-    pub fn host(&self) -> &String {
+    /// Returns the host of request.
+    pub fn host(&self) -> &str {
         &self.host
     }
 
-    /// Retrieves the agent of request.
-    pub fn user_agent(&self) -> &String {
+    /// Returns the user agent of request
+    pub fn user_agent(&self) -> &str {
         &self.user_agent
     }
 
-    /// Retrieves the `accept` field from request.
-    pub fn accept_field(&self) -> &String {
+    /// Returns the value of accept header.
+    pub fn accept(&self) -> &str {
         &self.accept
     }
 
-    /// Retrieves a `RequestStartLine` reference associated to `Request`. 
-    pub fn get_start_line(&self) -> &RequestStartLine {
+    /// Returns the request's  start line. 
+    pub fn start_line(&self) -> &RequestStartLine {
         &self.start_line
     }
 }
