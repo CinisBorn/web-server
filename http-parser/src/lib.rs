@@ -24,7 +24,7 @@ pub trait HttpParser {
             .map(|line| line.unwrap())
             .collect::<Vec<String>>();
 
-        let method = lines.swap_remove(0);
+        let method = lines.remove(0);
         let mut start_line = method
             .split_ascii_whitespace()
             .map(std::string::ToString::to_string)
@@ -33,8 +33,9 @@ pub trait HttpParser {
         let method = map_method(&start_line[0])?;
         let target = start_line[1].clone();
         let req_start_line = RequestStartLine::new(method, target);
+        
         start_line.clear();
-     
+
         let mut accept = String::new();
         let mut host = String::new();
         let mut user_agent = String::new();
@@ -43,7 +44,6 @@ pub trait HttpParser {
             if line.is_empty() {
                 continue;
             }
-            dbg!(&line);
             let field = line
                 .split(':')
                 .map(std::string::ToString::to_string)

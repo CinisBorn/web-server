@@ -34,29 +34,28 @@ pub struct Request {
 #[derive(Debug)]
 /// The request start line. See more at
 /// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
-/// 
+///
 /// The HTTP version isn't necessary because this parser will forever support only http/1.1
 pub struct RequestStartLine {
     method: Method,
-    target: String, 
+    target: String,
 }
 
 impl RequestStartLine {
-    /// Creates a new instance of `RequestStartLine`. 
+    /// Creates a new instance of `RequestStartLine`.
     pub fn new(method: Method, target: String) -> Self {
-        Self { method, target}
+        Self { method, target }
     }
 }
 
 impl Request {
-    /// Creates a new structured client `Request`. 
+    /// Creates a new structured client `Request`.
     pub fn new(
-        start_line: RequestStartLine, 
-        host: String, 
-        user_agent: String, 
-        accept: String
+        start_line: RequestStartLine,
+        host: String,
+        user_agent: String,
+        accept: String,
     ) -> Self {
-        
         Self {
             start_line,
             host,
