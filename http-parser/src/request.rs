@@ -1,7 +1,7 @@
 //! Provides tools for client request handling
 
 /// The HTTP method of `Request`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Method {
     /// The GET method.
@@ -46,6 +46,16 @@ impl RequestStartLine {
     pub fn new(method: Method, target: String) -> Self {
         Self { method, target }
     }
+
+    /// Returns the HTTP method. 
+    pub fn method(&self) -> &Method {
+        &self.method
+    }
+
+    /// Returns the target resource.
+    pub fn target(&self) -> &str {
+        &self.target
+    }
 }
 
 impl Request {
@@ -77,5 +87,10 @@ impl Request {
     /// Retrieves the `accept` field from request.
     pub fn accept_field(&self) -> &String {
         &self.accept
+    }
+
+    /// Retrieves a `RequestStartLine` reference associated to `Request`. 
+    pub fn get_start_line(&self) -> &RequestStartLine {
+        &self.start_line
     }
 }

@@ -13,9 +13,9 @@ pub mod error;
 /// The `HTTPParser` trait allows a type parser a HTTP message.
 pub trait HttpParser {
     /// Parses a HTTP request returning a `Request` struct.
-    /// 
-    /// # Errors 
-    /// 
+    ///
+    /// # Errors
+    ///
     /// Returns a `ParserError` if the method isn't known. See [`Method`]
     fn parser(&self, raw_txt: &[u8]) -> Result<Request, ParserError> {
         let buf = BufReader::new(raw_txt);
@@ -33,7 +33,7 @@ pub trait HttpParser {
         let method = map_method(&start_line[0])?;
         let target = start_line[1].clone();
         let req_start_line = RequestStartLine::new(method, target);
-        
+
         start_line.clear();
 
         let mut accept = String::new();
@@ -61,12 +61,7 @@ pub trait HttpParser {
             }
         }
 
-        Ok(Request::new(
-            req_start_line, 
-            host, 
-            user_agent, 
-            accept
-        ))
+        Ok(Request::new(req_start_line, host, user_agent, accept))
     }
 }
 
