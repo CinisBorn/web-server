@@ -61,7 +61,12 @@ pub trait HttpParser {
             }
         }
 
-        Ok(Request::new(req_start_line, host, user_agent, accept))
+        Ok(Request::new(
+            req_start_line, 
+            Some(host), 
+            Some(user_agent), 
+            Some(accept)
+        ))
     }
 }
 

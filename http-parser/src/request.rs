@@ -26,9 +26,9 @@ pub enum Method {
 #[derive(Debug)]
 pub struct Request {
     start_line: RequestStartLine,
-    host: String,
-    user_agent: String,
-    accept: String,
+    host: Option<String>,
+    user_agent: Option<String>,
+    accept: Option<String>,
 }
 
 #[derive(Debug)]
@@ -62,9 +62,9 @@ impl Request {
     /// Creates a new structured client `Request`.
     pub fn new(
         start_line: RequestStartLine,
-        host: String,
-        user_agent: String,
-        accept: String,
+        host: Option<String>,
+        user_agent: Option<String>,
+        accept: Option<String>,
     ) -> Self {
         Self {
             start_line,
@@ -75,18 +75,18 @@ impl Request {
     }
 
     /// Returns the host of request.
-    pub fn host(&self) -> &str {
-        &self.host
+    pub fn host(&self) -> Option<&str> {
+        self.host.as_deref()
     }
 
     /// Returns the user agent of request
-    pub fn user_agent(&self) -> &str {
-        &self.user_agent
+    pub fn user_agent(&self) -> Option<&str> {
+        self.user_agent.as_deref()
     }
 
     /// Returns the value of accept header.
-    pub fn accept(&self) -> &str {
-        &self.accept
+    pub fn accept(&self) -> Option<&str> {
+        self.accept.as_deref()
     }
 
     /// Returns the request's  start line. 

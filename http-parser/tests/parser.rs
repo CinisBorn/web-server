@@ -23,8 +23,8 @@ fn request_is_parsed_correctly() {
     let mock = MockParser::new();
     let req = mock.parser(BASIC_REQUEST).unwrap();
 
-    assert_eq!(req.accept(), "application/json");
-    assert_eq!(req.host(), "127.0.0.1");
+    assert_eq!(req.accept(), Some("application/json"));
+    assert_eq!(req.host(), Some("127.0.0.1"));
 }
 
 #[test]
