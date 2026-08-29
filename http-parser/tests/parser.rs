@@ -8,7 +8,6 @@ const BASIC_REQUEST: &[u8; 79] = b"GET / HTTP/1.1\r\n\
     \r\n\
     ";
 
-
 #[test]
 fn request_is_parsed_correctly() {
     let req = parse_req(BASIC_REQUEST).unwrap();

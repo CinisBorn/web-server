@@ -3,12 +3,8 @@
 //! This crate provides types and utilities for TCP handling.
 pub mod error;
 
-use std::io::ErrorKind::Interrupted;
 use std::io::Write;
-use std::{
-    io::Read,
-    net::{TcpListener, TcpStream},
-};
+use std::{net::{TcpListener, TcpStream}};
 
 use crate::error::ConnectionError;
 
@@ -22,35 +18,9 @@ pub struct Connection {
 #[derive(Debug)]
 pub struct ConnectionStream {
     stream: TcpStream,
-    buf: Vec<u8>,
 }
 
 impl ConnectionStream {
-    /// Handle a incoming connection.
-    ///
-    /// Attempts to read data from the stream into the internal buffer.
-    ///
-    /// Returns `Ok(())` if one or more bytes are successfully read.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConnectionError::Closed`] if the client closes the connection.
-    /// This is not considered a fatal error and should be handled by the caller.
-    ///
-    /// If an [`ErrorKind::Interrupted`] I/O error occurs, the operation is retried.
-    ///
-    /// Returns [`ConnectionError::Io`] for any other I/O error.
-    pub fn handle_connection(&mut self) -> Result<(), ConnectionError> {
-        loop {
-            match self.stream.read(&mut self.buf) {
-                Ok(0) => return Err(ConnectionError::Closed),
-                Ok(_) => return Ok(()),
-                Err(e) if e.kind() == Interrupted => {},
-                Err(e) => return Err(ConnectionError::Io(e)),
-            }
-        }
-    }
-
     /// Sends a reponse to client
     pub fn send_response(&mut self) {
         let _ = self.stream.write(
@@ -61,6 +31,11 @@ impl ConnectionStream {
         Hello
         ",
         );
+    }
+
+    /// Returns a mutable reference of `TcpStream`.
+    pub fn stream_mut(&mut self) -> &mut TcpStream {
+        &mut self.stream
     }
 }
 
@@ -102,7 +77,6 @@ impl Connection {
         let (stream, _) = self.socket.accept()?;
         Ok(ConnectionStream {
             stream,
-            buf: Vec::from([0u8; 8192]), // 8 Kib
         })
     }
 }

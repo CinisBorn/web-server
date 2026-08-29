@@ -6,7 +6,9 @@ pub mod request;
 
 use crate::request::{Method, Request, RequestStartLine};
 use error::ParserError;
-use std::io::{BufRead, BufReader};
+use std::{io::{BufRead, BufReader}, net::TcpStream};
+use std::io::Read;
+use std::io::ErrorKind::Interrupted;
 
 pub mod error;
 
@@ -16,8 +18,8 @@ pub mod error;
 /// 
 /// Returns a [`ParserError`] if it's not possible to parse the request. 
 pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError>  {
-    let buf = BufReader::new(raw_txt);
-    let mut lines = buf
+    let buf_read = BufReader::new(raw_txt);
+    let mut lines = buf_read
         .lines()
         .map(|line| line.unwrap())
         .collect::<Vec<String>>();
@@ -65,6 +67,31 @@ pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError>  {
         Some(user_agent),
         Some(accept),
     ))
+}
+
+/// Attempts to read bytes from a stream. 
+/// 
+/// Returns `Ok(&[n])` if one or more bytes are successfully read. 
+/// 
+/// # Errors 
+/// 
+/// Returns [`ParserError::ConnClosed`] if the client closes the connection. 
+/// 
+/// Returns [`ParserError::Io(n)`] if any other I/O error occurs. 
+/// 
+/// It will retry if an [`ErrorKind::Interrupted`] occurs.
+pub fn read_stream<'a>(
+    stream: &mut TcpStream, 
+    buf: &'a mut [u8]
+) -> Result<&'a [u8], ParserError> {
+    loop {
+        match stream.read(buf) {
+            Ok(0) => return Err(ParserError::ConnClosed),
+            Ok(n) => return Ok(&buf[..n]),
+            Err(e) if e.kind() == Interrupted => {},
+            Err(e) => return Err(ParserError::Io(e)),
+        }
+    }
 }
 
 // Maps the method from http request to a respective `Enum` variant.
