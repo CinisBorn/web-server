@@ -11,9 +11,10 @@ const BASIC_REQUEST: &[u8; 79] = b"GET / HTTP/1.1\r\n\
 #[test]
 fn request_is_parsed_correctly() {
     let req = parse_req(BASIC_REQUEST).unwrap();
-
-    assert_eq!(req.accept(), Some("application/json"));
-    assert_eq!(req.host(), Some("127.0.0.1"));
+    let headers = req.headers();
+    
+    assert_eq!(headers.accept(), Some("application/json"));
+    assert_eq!(headers.host(), Some("127.0.0.1"));
 }
 
 #[test]

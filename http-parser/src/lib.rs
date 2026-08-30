@@ -4,7 +4,7 @@
 
 pub mod request;
 
-use crate::request::{Method, Request, RequestStartLine};
+use crate::request::{Method, ReqHeaders, Request, RequestStartLine};
 use error::ParserError;
 use std::{io::{BufRead, BufReader}, net::TcpStream};
 use std::io::Read;
@@ -36,24 +36,20 @@ pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError>  {
 
     start_line.clear();
 
-    let mut accept = String::new();
-    let mut host = String::new();
-    let mut user_agent = String::new();
-
+    let mut headers = ReqHeaders::new();
+    
     for line in lines {
         if line.is_empty() {
             continue;
         }
-        let field = line
-            .split(':')
-            .map(std::string::ToString::to_string)
-            .collect::<Vec<String>>();
-        let value = field[1].trim().to_string();
+        
+        let field = line.split(':').collect::<Vec<&str>>();
+        let value = field[1].trim();
 
         match field[0].to_lowercase().as_str() {
-            "user-agent" => user_agent = value,
-            "accept" => accept = value,
-            "host" => host = value,
+            "user-agent" => headers.set_user_agent(value),
+            "accept" => headers.set_accept(value),
+            "host" => headers.set_host(value),
             _ => {
                 // It's a temporary measure
                 panic!("Unknown http field");
@@ -63,9 +59,7 @@ pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError>  {
 
     Ok(Request::new(
         req_start_line,
-        Some(host),
-        Some(user_agent),
-        Some(accept),
+        headers,
     ))
 }
 
