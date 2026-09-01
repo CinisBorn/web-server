@@ -36,27 +36,8 @@ pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError>  {
 
     start_line.clear();
 
-    let mut headers = ReqHeaders::new();
+    let headers = parse_req_headers(&lines);
     
-    for line in lines {
-        if line.is_empty() {
-            continue;
-        }
-        
-        let field = line.split(':').collect::<Vec<&str>>();
-        let value = field[1].trim();
-
-        match field[0].to_lowercase().as_str() {
-            "user-agent" => headers.set_user_agent(value),
-            "accept" => headers.set_accept(value),
-            "host" => headers.set_host(value),
-            _ => {
-                // It's a temporary measure
-                panic!("Unknown http field");
-            }
-        }
-    }
-
     Ok(Request::new(
         req_start_line,
         headers,
@@ -86,6 +67,32 @@ pub fn read_stream<'a>(
             Err(e) => return Err(ParserError::Io(e)),
         }
     }
+}
+
+fn parse_req_headers(headers: &Vec<String>) -> ReqHeaders {
+    let mut req_headers = ReqHeaders::new();
+
+    for header in headers {
+        if header.is_empty() {
+            continue;
+        }
+        
+        let field = header.split(':').collect::<Vec<&str>>();
+        let key = field[0];
+        let value = field[1].trim();
+
+        // match field key againts supported headers.
+        // 
+        // Unsupported headers will be ignored.
+        match key.to_lowercase().as_str() {
+            "user-agent" => req_headers.set_user_agent(value),
+            "accept" => req_headers.set_accept(value),
+            "host" => req_headers.set_host(value),
+            _ => continue
+        }
+    }
+
+    req_headers
 }
 
 // Maps the method from http request to a respective `Enum` variant.

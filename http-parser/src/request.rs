@@ -34,21 +34,21 @@ pub struct Request {
 pub struct ReqHeaders {
     host: Option<String>,
     user_agent: Option<String>,
-    accept: Option<String>
+    accept: Option<String>,
 }
 
 impl ReqHeaders {
     /// Creates a new instance of `ReqHeaders`.
     pub fn new() -> Self {
-        Self { 
-            host: None, 
-            user_agent: None, 
-            accept: None
+        Self {
+            host: None,
+            user_agent: None,
+            accept: None,
         }
     }
 
-    /// Sets the host of request. 
-    pub fn set_host(&mut self, value: &str)  {
+    /// Sets the host of request.
+    pub fn set_host(&mut self, value: &str) {
         self.host = Some(value.to_string())
     }
 
@@ -57,11 +57,11 @@ impl ReqHeaders {
         self.host.as_deref()
     }
 
-    /// Sets the user agent of request. 
+    /// Sets the user agent of request.
     pub fn set_user_agent(&mut self, value: &str) {
         self.user_agent = Some(value.to_string())
     }
-    
+
     /// Returns the user agent of request.
     pub fn user_agent(&self) -> Option<&str> {
         self.user_agent.as_deref()
@@ -71,7 +71,7 @@ impl ReqHeaders {
     pub fn set_accept(&mut self, value: &str) {
         self.accept = Some(value.to_string())
     }
-    
+
     /// Returns the value of accept header.
     pub fn accept(&self) -> Option<&str> {
         self.accept.as_deref()
@@ -94,7 +94,7 @@ impl RequestStartLine {
         Self { method, target }
     }
 
-    /// Returns the HTTP method. 
+    /// Returns the HTTP method.
     pub fn method(&self) -> &Method {
         &self.method
     }
@@ -108,10 +108,13 @@ impl RequestStartLine {
 impl Request {
     /// Creates a new structured client `Request`.
     pub fn new(start_line: RequestStartLine, headers: ReqHeaders) -> Self {
-        Self { start_line, headers }
+        Self {
+            start_line,
+            headers,
+        }
     }
 
-    /// Returns the request's  start line. 
+    /// Returns the request's  start line.
     pub fn start_line(&self) -> &RequestStartLine {
         &self.start_line
     }
