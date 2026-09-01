@@ -30,18 +30,7 @@ pub fn parse_req(raw_txt: &[u8]) -> Result<Request, ParserError> {
     let frame_idx = headers.iter().position(|l| l == "");
     let _ = headers.split_off(frame_idx.unwrap());
 
-    let method = headers.remove(0);
-    let mut start_line = method
-        .split_ascii_whitespace()
-        .map(std::string::ToString::to_string)
-        .collect::<Vec<String>>();
-
-    let method = map_method(&start_line[0])?;
-    let target = start_line[1].clone();
-    let req_start_line = RequestStartLine::new(method, target);
-
-    start_line.clear();
-
+    let req_start_line = parse_req_start_line(&mut headers)?;
     let req_headers = parse_req_headers(&headers);
 
     Ok(Request::new(req_start_line, req_headers))
@@ -71,7 +60,7 @@ pub fn read_stream<'a>(stream: &mut TcpStream, buf: &'a mut [u8]) -> Result<&'a 
 
 fn parse_req_headers(headers: &Vec<String>) -> ReqHeaders {
     let mut req_headers = ReqHeaders::new();
-    
+
     for header in headers {
         if header.is_empty() {
             continue;
@@ -93,6 +82,23 @@ fn parse_req_headers(headers: &Vec<String>) -> ReqHeaders {
     }
 
     req_headers
+}
+
+fn parse_req_start_line(headers: &mut Vec<String>) -> Result<RequestStartLine, ParserError> {
+    use std::string::ToString;
+
+    let method = headers.remove(0);
+    let mut start_line = method
+        .split_ascii_whitespace()
+        .map(ToString::to_string)
+        .collect::<Vec<String>>();
+    let method = map_method(&start_line[0])?;
+    let target = start_line[1].clone();
+    let req_start_line = RequestStartLine::new(method, target);
+
+    start_line.clear();
+
+    Ok(req_start_line)
 }
 
 // Maps the method from http request to a respective `Enum` variant.
