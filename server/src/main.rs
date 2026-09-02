@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let mut stream = conn.connect()?;
         let mut buf = [0u8; 8192];
-        let request = http_parser::read_stream(stream.stream_mut(), &mut buf);
+        let request = http_parser::parse_req(stream.stream_mut(), &mut buf);
 
         dbg!(request.unwrap());
         stream.send_response();
