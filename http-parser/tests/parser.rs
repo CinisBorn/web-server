@@ -1,6 +1,6 @@
 //! It will exhaustively checks for logical error in parsing functions
-use std::io::{Cursor, Write};
 use http_parser::{parse_req, request::Method};
+use std::io::{Cursor, Write};
 
 const BASIC_REQUEST: &[u8; 79] = b"GET / HTTP/1.1\r\n\
     User-agent: mock\r\n\
@@ -27,9 +27,9 @@ fn request_is_parsed_correctly() {
     let headers = req.headers();
     let accept = headers.get("Accept");
     let host = headers.get("Host");
-    
-    assert_eq!(accept, Some(&String::from(" application/json")));
-    assert_eq!(host, Some(&String::from(" 127.0.0.1")));
+
+    assert_eq!(accept, Some(&String::from("application/json")));
+    assert_eq!(host, Some(&String::from("127.0.0.1")));
 }
 
 #[test]

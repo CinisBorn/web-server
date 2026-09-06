@@ -128,10 +128,12 @@ fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Pars
         Ok(v) => v,
         Err(_) => return Parser::Invalid(ParserError::InvalidInput)
     };
-    let value = match String::from_utf8(b_value.to_vec()) {
+    let mut value = match String::from_utf8(b_value.to_vec()) {
         Ok(v) => v,
         Err(_) => return Parser::Invalid(ParserError::InvalidInput)
     };
+
+    value.remove(0);
     
     headers.insert(field, value);
     
