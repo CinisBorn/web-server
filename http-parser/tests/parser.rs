@@ -21,19 +21,21 @@ fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
 #[test]
 fn request_is_parsed_correctly() {
     let mut source = mock_source(BASIC_REQUEST, 8192);
-    let mut buf = [0u8; 8192];
+    let mut buf = [0u8; 79];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
     let headers = req.headers();
+    let accept = headers.get("Accept");
+    let host = headers.get("Host");
     
-    assert_eq!(headers.accept(), Some("application/json"));
-    assert_eq!(headers.host(), Some("127.0.0.1"));
+    assert_eq!(accept, Some(&String::from(" application/json")));
+    assert_eq!(host, Some(&String::from(" 127.0.0.1")));
 }
 
 #[test]
 fn start_line_is_parsed_correctly() {
     let mut source = mock_source(BASIC_REQUEST, 8192);
-    let mut buf = [0u8; 8192];
+    let mut buf = [0u8; 79];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
     let start_line = req.start_line();

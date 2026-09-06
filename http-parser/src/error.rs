@@ -15,6 +15,8 @@ pub enum ParserError {
     /// It's a temporary measure why the understading of "unknown method" isn't well defined.
     /// It's very common costumized methods or fields in HTTP requests because HTTP is extensible by design.
     UnknownMethod(String),
+    /// Unexpected input was found. 
+    InvalidInput,
 }
 
 impl std::error::Error for ParserError {}
@@ -24,6 +26,7 @@ impl std::fmt::Display for ParserError {
             ParserError::UnknownMethod(m) => write!(f, "{m}"),
             ParserError::ConnClosed => write!(f, "Connection was closed"),
             ParserError::Io(m) => write!(f, "{m}"),
+            ParserError::InvalidInput => write!(f, "Unexpected input")
         }
     }
 }

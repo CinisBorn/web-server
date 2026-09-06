@@ -1,5 +1,7 @@
 //! Provides tools for client request handling
 
+use std::collections::HashMap;
+
 /// The HTTP method of `Request`.
 #[derive(Debug, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
@@ -26,7 +28,7 @@ pub enum Method {
 #[derive(Debug)]
 pub struct Request {
     start_line: RequestStartLine,
-    headers: ReqHeaders,
+    headers: HashMap<String, String>,
 }
 
 /// The headers of request.
@@ -107,7 +109,7 @@ impl RequestStartLine {
 
 impl Request {
     /// Creates a new structured client `Request`.
-    pub fn new(start_line: RequestStartLine, headers: ReqHeaders) -> Self {
+    pub fn new(start_line: RequestStartLine, headers: HashMap<String, String>) -> Self {
         Self {
             start_line,
             headers,
@@ -120,7 +122,7 @@ impl Request {
     }
 
     /// Returns a `ReqHeaders` containing headers of request
-    pub fn headers(&self) -> &ReqHeaders {
+    pub fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
 }

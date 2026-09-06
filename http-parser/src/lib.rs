@@ -4,36 +4,77 @@
 
 pub mod request;
 
-use crate::request::{Method, ReqHeaders, Request, RequestStartLine};
+use crate::request::{Method, Request, RequestStartLine};
 use error::ParserError;
+use std::collections::HashMap;
 use std::io::ErrorKind::Interrupted;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 
 pub mod error;
+
+enum Parser {
+    Complet, 
+    Incomplet,
+    Invalid(ParserError)
+} 
 
 /// Parses a incoming request.
 ///
 /// # Errors
 ///
 /// Returns a [`ParserError`] if it's not possible to parse the request.
-pub fn parse_req<'a, T>(source: &mut T, buf: &'a mut [u8]) -> Result<Request, ParserError> 
-where 
-    T: Read + Write
+pub fn parse_req<'a, T>(source: &mut T, buf: &'a mut [u8]) -> Result<Request, ParserError>
+where
+    T: Read + Write,
 {
-    let raw_data = read_stream(source, buf)?;
-    let buf_read = BufReader::new(raw_data);
-    let mut headers = buf_read
-        .lines()
-        .map(|line| line.unwrap())
-        .collect::<Vec<String>>();
 
-    let frame_idx = headers.iter().position(|l| l == "");
-    let _ = headers.split_off(frame_idx.unwrap());
+    let _ = read_stream(source, buf)?;
+    let req_start_line;
+    let mut cursor = 0;
+  
+    loop {
+        let line = find_line(&buf[cursor..]);
+        
+        match line {
+            Some(v) => {
+                let res = parse_req_start_line(v)?;
+                let read = v.len();
+                req_start_line = res;
+                cursor += read + 2;
+                
+                
+                break
+            },
+            None => {
+                let _ = read_stream(source, buf)?;
+            }
+        }
+    }
 
-    let req_start_line = parse_req_start_line(&mut headers)?;
-    let req_headers = parse_req_headers(&headers);
-
-    Ok(Request::new(req_start_line, req_headers))
+    let mut headers: HashMap<String, String> = HashMap::new();
+    
+    loop { 
+        let line = find_line(&buf[cursor..]);
+        
+        match line {
+            Some(line) => match parse_header_line(line, &mut headers) {
+                Parser::Incomplet => {
+                    let read = line.len();
+                    cursor += read + 2;
+                },
+                Parser::Invalid(err) => return Err(err),
+                Parser::Complet => {
+                    println!("FINISHING");
+                    break;
+                }
+            },
+            None => {
+                read_stream(source, buf)?;
+            }
+        };
+    };
+    
+    Ok(Request::new(req_start_line, headers))
 }
 
 /// Attempts to read bytes from a stream.
@@ -47,9 +88,9 @@ where
 /// Returns [`ParserError::Io(n)`] if any other I/O error occurs.
 ///
 /// It will retry if an [`ErrorKind::Interrupted`] occurs.
-fn read_stream<'a, T>(stream: &mut T, buf: &'a mut [u8]) -> Result<&'a [u8], ParserError> 
-where 
-    T: Read + Write
+fn read_stream<'a, T>(stream: &mut T, buf: &'a mut [u8]) -> Result<&'a [u8], ParserError>
+where
+    T: Read + Write,
 {
     loop {
         match stream.read(buf) {
@@ -61,45 +102,68 @@ where
     }
 }
 
-fn parse_req_headers(headers: &Vec<String>) -> ReqHeaders {
-    let mut req_headers = ReqHeaders::new();
+fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Parser {
+    if line.is_empty() {
+        return Parser::Complet
+    };
 
-    for header in headers {
-        if header.is_empty() {
-            continue;
-        }
-
-        let field = header.split(':').collect::<Vec<&str>>();
-        let key = field[0];
-        let value = field[1].trim();
-
-        // match field key againts supported headers.
-        //
-        // Unsupported headers will be ignored.
-        match key.to_lowercase().as_str() {
-            "user-agent" => req_headers.set_user_agent(value),
-            "accept" => req_headers.set_accept(value),
-            "host" => req_headers.set_host(value),
-            _ => continue,
-        }
+    let mut iter = line.split(|byte| *byte == 0x3A);
+    let field = iter.next();
+    let value = iter.next();
+    // b = byte 
+    let b_field; 
+    let b_value; 
+    
+    match field {
+        Some(f) => b_field = f,
+        None => return Parser::Invalid(ParserError::InvalidInput)
     }
 
-    req_headers
+    match value {
+        Some(v) => b_value = v,
+        None => return Parser::Invalid(ParserError::InvalidInput)
+    }
+
+    let field = match String::from_utf8(b_field.to_vec()) {
+        Ok(v) => v,
+        Err(_) => return Parser::Invalid(ParserError::InvalidInput)
+    };
+    let value = match String::from_utf8(b_value.to_vec()) {
+        Ok(v) => v,
+        Err(_) => return Parser::Invalid(ParserError::InvalidInput)
+    };
+    
+    headers.insert(field, value);
+    
+    Parser::Incomplet
 }
 
-fn parse_req_start_line(headers: &mut Vec<String>) -> Result<RequestStartLine, ParserError> {
-    use std::string::ToString;
+fn find_line(buf: &[u8]) -> Option<&[u8]> {
+    buf.windows(2)
+        .position(|w| w == b"\r\n")
+        .map(|pos| &buf[..pos])
+}
 
-    let method = headers.remove(0);
-    let mut start_line = method
-        .split_ascii_whitespace()
-        .map(ToString::to_string)
-        .collect::<Vec<String>>();
-    let method = map_method(&start_line[0])?;
-    let target = start_line[1].clone();
+fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
+    let mut chunks = line.split(|byte| *byte == 0x20);
+    let method = match chunks.next() {
+        Some(v) => match String::from_utf8(v.to_vec()) {
+            Ok(s) => s,
+            Err(_) => return Err(ParserError::InvalidInput),
+        },
+        None => return Err(ParserError::InvalidInput)
+    };
+    let target  = match chunks.next() {
+        Some(v) => match String::from_utf8(v.to_vec()) {
+            Ok(s) => s,
+            Err(_) => return Err(ParserError::InvalidInput),
+        },
+        None => return Err(ParserError::InvalidInput)
+    };
+
+    let method = map_method(&method)?;
+    let target = target;
     let req_start_line = RequestStartLine::new(method, target);
-
-    start_line.clear();
 
     Ok(req_start_line)
 }
