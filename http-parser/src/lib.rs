@@ -13,10 +13,10 @@ use std::io::{Read, Write};
 pub mod error;
 
 enum Parser {
-    Complet, 
+    Complet,
     Incomplet,
-    Invalid(ParserError)
-} 
+    Invalid(ParserError),
+}
 
 /// Parses a incoming request.
 ///
@@ -27,24 +27,22 @@ pub fn parse_req<'a, T>(source: &mut T, buf: &'a mut [u8]) -> Result<Request, Pa
 where
     T: Read + Write,
 {
-
     let _ = read_stream(source, buf)?;
     let req_start_line;
     let mut cursor = 0;
-  
+
     loop {
         let line = find_line(&buf[cursor..]);
-        
+
         match line {
             Some(v) => {
                 let res = parse_req_start_line(v)?;
                 let read = v.len();
                 req_start_line = res;
                 cursor += read + 2;
-                
-                
-                break
-            },
+
+                break;
+            }
             None => {
                 let _ = read_stream(source, buf)?;
             }
@@ -52,16 +50,16 @@ where
     }
 
     let mut headers: HashMap<String, String> = HashMap::new();
-    
-    loop { 
+
+    loop {
         let line = find_line(&buf[cursor..]);
-        
+
         match line {
             Some(line) => match parse_header_line(line, &mut headers) {
                 Parser::Incomplet => {
                     let read = line.len();
                     cursor += read + 2;
-                },
+                }
                 Parser::Invalid(err) => return Err(err),
                 Parser::Complet => {
                     println!("FINISHING");
@@ -72,8 +70,8 @@ where
                 read_stream(source, buf)?;
             }
         };
-    };
-    
+    }
+
     Ok(Request::new(req_start_line, headers))
 }
 
@@ -104,39 +102,29 @@ where
 
 fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Parser {
     if line.is_empty() {
-        return Parser::Complet
+        return Parser::Complet;
     };
 
-    let mut iter = line.split(|byte| *byte == 0x3A);
-    let field = iter.next();
-    let value = iter.next();
-    // b = byte 
-    let b_field; 
-    let b_value; 
-    
-    match field {
-        Some(f) => b_field = f,
-        None => return Parser::Invalid(ParserError::InvalidInput)
-    }
-
-    match value {
-        Some(v) => b_value = v,
-        None => return Parser::Invalid(ParserError::InvalidInput)
-    }
-
-    let field = match String::from_utf8(b_field.to_vec()) {
-        Ok(v) => v,
-        Err(_) => return Parser::Invalid(ParserError::InvalidInput)
-    };
-    let mut value = match String::from_utf8(b_value.to_vec()) {
-        Ok(v) => v,
-        Err(_) => return Parser::Invalid(ParserError::InvalidInput)
+    let colon_position = match line.iter().position(|byte| *byte == b':') {
+        Some(position) => position,
+        None => return Parser::Invalid(ParserError::InvalidInput),
     };
 
-    value.remove(0);
-    
-    headers.insert(field, value);
-    
+    let field = &line[..colon_position];
+    let value = &line[colon_position + 1..];
+
+    let field = match std::str::from_utf8(field) {
+        Ok(value) => value,
+        Err(_) => return Parser::Invalid(ParserError::InvalidInput),
+    };
+
+    let value = match std::str::from_utf8(value) {
+        Ok(value) => value.trim_start(),
+        Err(_) => return Parser::Invalid(ParserError::InvalidInput),
+    };
+
+    headers.insert(field.to_owned(), value.to_owned());
+
     Parser::Incomplet
 }
 
@@ -153,14 +141,14 @@ fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
             Ok(s) => s,
             Err(_) => return Err(ParserError::InvalidInput),
         },
-        None => return Err(ParserError::InvalidInput)
+        None => return Err(ParserError::InvalidInput),
     };
-    let target  = match chunks.next() {
+    let target = match chunks.next() {
         Some(v) => match String::from_utf8(v.to_vec()) {
             Ok(s) => s,
             Err(_) => return Err(ParserError::InvalidInput),
         },
-        None => return Err(ParserError::InvalidInput)
+        None => return Err(ParserError::InvalidInput),
     };
 
     let method = map_method(&method)?;
