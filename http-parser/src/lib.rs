@@ -135,25 +135,24 @@ fn find_line(buf: &[u8]) -> Option<&[u8]> {
 }
 
 fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
-    let mut chunks = line.split(|byte| *byte == 0x20);
-    let method = match chunks.next() {
-        Some(v) => match String::from_utf8(v.to_vec()) {
-            Ok(s) => s,
-            Err(_) => return Err(ParserError::InvalidInput),
-        },
-        None => return Err(ParserError::InvalidInput),
+    let mut items = line.split(|byte| *byte == b' ');
+
+    let method = items.next().ok_or(ParserError::InvalidInput)?;
+    let target = items.next().ok_or(ParserError::InvalidInput)?;
+
+    let method = match std::str::from_utf8(method) {
+        Ok(method) => method,
+        Err(_) => return Err(ParserError::InvalidInput),
     };
-    let target = match chunks.next() {
-        Some(v) => match String::from_utf8(v.to_vec()) {
-            Ok(s) => s,
-            Err(_) => return Err(ParserError::InvalidInput),
-        },
-        None => return Err(ParserError::InvalidInput),
+
+    let target = match std::str::from_utf8(target) {
+        Ok(target) => target,
+        Err(_) => return Err(ParserError::InvalidInput),
     };
 
     let method = map_method(&method)?;
     let target = target;
-    let req_start_line = RequestStartLine::new(method, target);
+    let req_start_line = RequestStartLine::new(method, target.to_owned());
 
     Ok(req_start_line)
 }
