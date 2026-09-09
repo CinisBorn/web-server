@@ -32,7 +32,7 @@ pub struct Request {
 }
 
 /// The headers of request.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ReqHeaders {
     host: Option<String>,
     user_agent: Option<String>,
@@ -51,7 +51,7 @@ impl ReqHeaders {
 
     /// Sets the host of request.
     pub fn set_host(&mut self, value: &str) {
-        self.host = Some(value.to_string())
+        self.host = Some(value.to_string());
     }
 
     /// Returns the host of request.
@@ -61,7 +61,7 @@ impl ReqHeaders {
 
     /// Sets the user agent of request.
     pub fn set_user_agent(&mut self, value: &str) {
-        self.user_agent = Some(value.to_string())
+        self.user_agent = Some(value.to_string());
     }
 
     /// Returns the user agent of request.
@@ -71,7 +71,7 @@ impl ReqHeaders {
 
     /// Sets the value of accept header.
     pub fn set_accept(&mut self, value: &str) {
-        self.accept = Some(value.to_string())
+        self.accept = Some(value.to_string());
     }
 
     /// Returns the value of accept header.

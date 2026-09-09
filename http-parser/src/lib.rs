@@ -23,7 +23,7 @@ enum Parser {
 /// # Errors
 ///
 /// Returns a [`ParserError`] if it's not possible to parse the request.
-pub fn parse_req<'a, T>(source: &mut T, buf: &'a mut [u8]) -> Result<Request, ParserError>
+pub fn parse_req<T>(source: &mut T, buf: &mut [u8]) -> Result<Request, ParserError>
 where
     T: Read + Write,
 {
@@ -69,7 +69,7 @@ where
             None => {
                 read_stream(source, buf)?;
             }
-        };
+        }
     }
 
     Ok(Request::new(req_start_line, headers))
@@ -103,24 +103,21 @@ where
 fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Parser {
     if line.is_empty() {
         return Parser::Complet;
-    };
+    }
 
-    let colon_position = match line.iter().position(|byte| *byte == b':') {
-        Some(position) => position,
-        None => return Parser::Invalid(ParserError::InvalidInput),
+    let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
+        return Parser::Invalid(ParserError::InvalidInput)
     };
 
     let field = &line[..colon_position];
     let value = &line[colon_position + 1..];
 
-    let field = match std::str::from_utf8(field) {
-        Ok(value) => value,
-        Err(_) => return Parser::Invalid(ParserError::InvalidInput),
+    let Ok(field) = std::str::from_utf8(field) else {
+        return Parser::Invalid(ParserError::InvalidInput)
     };
 
-    let value = match std::str::from_utf8(value) {
-        Ok(value) => value.trim_start(),
-        Err(_) => return Parser::Invalid(ParserError::InvalidInput),
+    let Ok(value) = std::str::from_utf8(value) else {
+        return Parser::Invalid(ParserError::InvalidInput)
     };
 
     headers.insert(field.to_owned(), value.to_owned());
@@ -140,18 +137,15 @@ fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
     let method = items.next().ok_or(ParserError::InvalidInput)?;
     let target = items.next().ok_or(ParserError::InvalidInput)?;
 
-    let method = match std::str::from_utf8(method) {
-        Ok(method) => method,
-        Err(_) => return Err(ParserError::InvalidInput),
+    let Ok(method) = std::str::from_utf8(method) else { 
+        return Err(ParserError::InvalidInput)
     };
 
-    let target = match std::str::from_utf8(target) {
-        Ok(target) => target,
-        Err(_) => return Err(ParserError::InvalidInput),
+    let Ok(target) = std::str::from_utf8(target) else {
+        return Err(ParserError::InvalidInput)
     };
 
-    let method = map_method(&method)?;
-    let target = target;
+    let method = map_method(method)?;
     let req_start_line = RequestStartLine::new(method, target.to_owned());
 
     Ok(req_start_line)
