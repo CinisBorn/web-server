@@ -110,7 +110,7 @@ fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Pars
     };
 
     let field = &line[..colon_position];
-    let value = &line[colon_position + 1..];
+    let value = &line[colon_position + 2..];
 
     let Ok(field) = std::str::from_utf8(field) else {
         return Parser::Invalid(ParserError::InvalidInput)
@@ -120,6 +120,7 @@ fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Pars
         return Parser::Invalid(ParserError::InvalidInput)
     };
 
+    println!("THE ACTUAL HEADER {}:{}", &field, &value);
     headers.insert(field.to_owned(), value.to_owned());
 
     Parser::Incomplet
