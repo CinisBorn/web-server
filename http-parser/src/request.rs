@@ -29,6 +29,7 @@ pub enum Method {
 pub struct Request {
     start_line: RequestStartLine,
     headers: HashMap<String, String>,
+    body: String,
 }
 
 /// The headers of request.
@@ -37,16 +38,13 @@ pub struct ReqHeaders {
     host: Option<String>,
     user_agent: Option<String>,
     accept: Option<String>,
+    content_length: Option<usize>,
 }
 
 impl ReqHeaders {
     /// Creates a new instance of `ReqHeaders`.
     pub fn new() -> Self {
-        Self {
-            host: None,
-            user_agent: None,
-            accept: None,
-        }
+        Self::default()
     }
 
     /// Sets the host of request.
@@ -109,10 +107,11 @@ impl RequestStartLine {
 
 impl Request {
     /// Creates a new structured client `Request`.
-    pub fn new(start_line: RequestStartLine, headers: HashMap<String, String>) -> Self {
+    pub fn new(start_line: RequestStartLine, headers: HashMap<String, String>, body: String) -> Self {
         Self {
             start_line,
             headers,
+            body
         }
     }
 
@@ -124,5 +123,10 @@ impl Request {
     /// Returns a `ReqHeaders` containing headers of request
     pub fn headers(&self) -> &HashMap<String, String> {
         &self.headers
+    }
+
+    /// Returns the body of request.
+    pub fn body(&self) -> &str {
+        &self.body
     }
 }

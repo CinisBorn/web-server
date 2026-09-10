@@ -17,6 +17,10 @@ pub enum ParserError {
     UnknownMethod(String),
     /// Unexpected input was found. 
     InvalidInput,
+    /// The parsing process was ignored. 
+    /// 
+    /// The main purpose of this variant is to signal a process was skipped. 
+    Ignored
 }
 
 impl std::error::Error for ParserError {}
@@ -26,7 +30,8 @@ impl std::fmt::Display for ParserError {
             ParserError::UnknownMethod(m) => write!(f, "{m}"),
             ParserError::ConnClosed => write!(f, "Connection was closed"),
             ParserError::Io(m) => write!(f, "{m}"),
-            ParserError::InvalidInput => write!(f, "Unexpected input")
+            ParserError::InvalidInput => write!(f, "Unexpected input"),
+            ParserError::Ignored => write!(f, "")
         }
     }
 }

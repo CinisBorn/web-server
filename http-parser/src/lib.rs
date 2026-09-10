@@ -7,7 +7,7 @@ pub mod request;
 use crate::request::{Method, Request, RequestStartLine};
 use error::ParserError;
 use std::collections::HashMap;
-use std::io::ErrorKind::Interrupted;
+use std::io::ErrorKind::{Interrupted};
 use std::io::{Read, Write};
 
 pub mod error;
@@ -62,7 +62,7 @@ where
                 }
                 Parser::Invalid(err) => return Err(err),
                 Parser::Complet => {
-                    println!("FINISHING");
+                    cursor += 2;
                     break;
                 }
             },
@@ -72,7 +72,19 @@ where
         }
     }
 
-    Ok(Request::new(req_start_line, headers))
+    let mut buf = buf.to_vec();
+    buf.reverse();
+    buf.truncate(cursor);
+    
+    let body = match read_body(&buf, &headers)  {
+        Ok(body) => body,
+        Err(err) => match err {
+             ParserError::Ignored => String::new(),
+             _ => return Err(err)
+        }
+    };
+    
+    Ok(Request::new(req_start_line, headers, body))
 }
 
 /// Attempts to read bytes from a stream.
@@ -106,21 +118,21 @@ fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Pars
     }
 
     let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
-        return Parser::Invalid(ParserError::InvalidInput)
+        return Parser::Invalid(ParserError::InvalidInput);
     };
 
     let field = &line[..colon_position];
     let value = &line[colon_position + 2..];
 
     let Ok(field) = std::str::from_utf8(field) else {
-        return Parser::Invalid(ParserError::InvalidInput)
+        return Parser::Invalid(ParserError::InvalidInput);
     };
 
     let Ok(value) = std::str::from_utf8(value) else {
-        return Parser::Invalid(ParserError::InvalidInput)
+        return Parser::Invalid(ParserError::InvalidInput);
     };
 
-    println!("THE ACTUAL HEADER {}:{}", &field, &value);
+
     headers.insert(field.to_owned(), value.to_owned());
 
     Parser::Incomplet
@@ -138,18 +150,39 @@ fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
     let method = items.next().ok_or(ParserError::InvalidInput)?;
     let target = items.next().ok_or(ParserError::InvalidInput)?;
 
-    let Ok(method) = std::str::from_utf8(method) else { 
-        return Err(ParserError::InvalidInput)
+    let Ok(method) = std::str::from_utf8(method) else {
+        return Err(ParserError::InvalidInput);
     };
 
     let Ok(target) = std::str::from_utf8(target) else {
-        return Err(ParserError::InvalidInput)
+        return Err(ParserError::InvalidInput);
     };
 
     let method = map_method(method)?;
     let req_start_line = RequestStartLine::new(method, target.to_owned());
 
     Ok(req_start_line)
+}
+
+fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<String, ParserError> {
+    let Some(content_length) = headers.get("Content-length") else {
+        return Err(ParserError::Ignored);
+    };
+
+    let Ok(content_length) = content_length.parse::<usize>() else {
+        return Err(ParserError::InvalidInput);
+    };
+
+    let mut buf = vec![0u8; content_length];
+    _ = source.read_exact(&mut buf);
+    
+    buf.reverse();
+
+    let Ok(body_txt) = String::from_utf8(buf.to_vec())  else {
+        return Err(ParserError::InvalidInput)
+    };
+
+    Ok(body_txt)
 }
 
 // Maps the method from http request to a respective `Enum` variant.
