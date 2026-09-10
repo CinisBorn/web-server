@@ -178,7 +178,7 @@ fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<Str
     
     buf.reverse();
 
-    let Ok(body_txt) = String::from_utf8(buf.to_vec())  else {
+    let Ok(body_txt) = String::from_utf8(buf)  else {
         return Err(ParserError::InvalidInput)
     };
 

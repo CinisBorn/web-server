@@ -57,6 +57,6 @@ fn request_with_body_is_parsed_correctly() {
     let mut buf = [0u8; 103];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
-    
+
     assert_eq!(req.body(), "hello");
 }
