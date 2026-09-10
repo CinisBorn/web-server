@@ -2,15 +2,18 @@
 //!
 //! Provides utilities, types, traits, structs, and other useful tools for HTTP parsing.
 
-pub mod request;
 
-use crate::request::{Method, Request, RequestStartLine};
-use error::ParserError;
 use std::collections::HashMap;
-use std::io::ErrorKind::{Interrupted};
+use std::io::ErrorKind::Interrupted;
 use std::io::{Read, Write};
 
+use request::{Method, Request, RequestStartLine};
+use error::ParserError;
+use helpers::map_method;
+
+mod helpers;
 pub mod error;
+pub mod request;
 
 enum Parser {
     Complet,
@@ -75,15 +78,15 @@ where
     let mut buf = buf.to_vec();
     buf.reverse();
     buf.truncate(cursor);
-    
-    let body = match read_body(&buf, &headers)  {
+
+    let body = match read_body(&buf, &headers) {
         Ok(body) => body,
         Err(err) => match err {
-             ParserError::Ignored => String::new(),
-             _ => return Err(err)
-        }
+            ParserError::Ignored => String::new(),
+            _ => return Err(err),
+        },
     };
-    
+
     Ok(Request::new(req_start_line, headers, body))
 }
 
@@ -132,7 +135,6 @@ fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Pars
         return Parser::Invalid(ParserError::InvalidInput);
     };
 
-
     headers.insert(field.to_owned(), value.to_owned());
 
     Parser::Incomplet
@@ -175,27 +177,12 @@ fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<Str
 
     let mut buf = vec![0u8; content_length];
     _ = source.read_exact(&mut buf);
-    
+
     buf.reverse();
 
-    let Ok(body_txt) = String::from_utf8(buf)  else {
-        return Err(ParserError::InvalidInput)
+    let Ok(body_txt) = String::from_utf8(buf) else {
+        return Err(ParserError::InvalidInput);
     };
 
     Ok(body_txt)
-}
-
-// Maps the method from http request to a respective `Enum` variant.
-fn map_method(method: &str) -> Result<Method, ParserError> {
-    match method {
-        "GET" => Ok(Method::GET),
-        "POST" => Ok(Method::POST),
-        "DELETE" => Ok(Method::DELETE),
-        "CONNECT" => Ok(Method::CONNECT),
-        "PATCH" => Ok(Method::PATCH),
-        "PUT" => Ok(Method::PUT),
-        "OPTIONS" => Ok(Method::OPTIONS),
-        "HEAD" => Ok(Method::HEAD),
-        _ => Err(ParserError::UnknownMethod(method.to_string())),
-    }
 }
