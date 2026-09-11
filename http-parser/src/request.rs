@@ -61,11 +61,15 @@ impl RequestStartLine {
 
 impl Request {
     /// Creates a new structured client `Request`.
-    pub fn new(start_line: RequestStartLine, headers: HashMap<String, String>, body: String) -> Self {
+    pub fn new(
+        start_line: RequestStartLine,
+        headers: HashMap<String, String>,
+        body: String,
+    ) -> Self {
         Self {
             start_line,
             headers,
-            body
+            body,
         }
     }
 

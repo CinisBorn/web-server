@@ -30,48 +30,32 @@ pub fn parse_req<T>(source: &mut T, buf: &mut [u8]) -> Result<Request, ParserErr
 where
     T: Read + Write,
 {
-    let _ = read_stream(source, buf)?;
-    let req_start_line;
+    read_stream(source, buf)?;
     let mut cursor = 0;
 
-    loop {
-        let line = find_line(&buf[cursor..]);
-
-        match line {
-            Some(v) => {
-                let res = parse_req_start_line(v)?;
-                let read = v.len();
-                req_start_line = res;
-                cursor += read + 2;
-
-                break;
-            }
-            None => {
-                let _ = read_stream(source, buf)?;
-            }
+    let start_line = loop {
+        if let Some(line) = find_line(&buf[cursor..]) {
+            cursor += line.len() + 2;
+            break parse_req_start_line(line)?
         }
-    }
+
+        read_stream(source, buf)?;
+    };
 
     let mut headers: HashMap<String, String> = HashMap::new();
 
     loop {
-        let line = find_line(&buf[cursor..]);
-
-        match line {
-            Some(line) => match parse_header_line(line, &mut headers) {
-                Parser::Incomplet => {
-                    let read = line.len();
-                    cursor += read + 2;
-                }
+        if let Some(line) = find_line(&buf[cursor..]) {
+            match  parse_header_line(line, &mut headers) {
+                Parser::Incomplet => cursor += line.len() + 2,
                 Parser::Invalid(err) => return Err(err),
                 Parser::Complet => {
                     cursor += 2;
                     break;
-                }
-            },
-            None => {
-                read_stream(source, buf)?;
+                }, 
             }
+        } else {
+            read_stream(source, buf)?;
         }
     }
 
@@ -87,7 +71,7 @@ where
         },
     };
 
-    Ok(Request::new(req_start_line, headers, body))
+    Ok(Request::new(start_line, headers, body))
 }
 
 /// Attempts to read bytes from a stream.
