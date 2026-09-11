@@ -2,17 +2,16 @@
 //!
 //! Provides utilities, types, traits, structs, and other useful tools for HTTP parsing.
 
-
 use std::collections::HashMap;
 use std::io::ErrorKind::Interrupted;
 use std::io::{Read, Write};
 
-use request::{Method, Request, RequestStartLine};
 use error::ParserError;
 use helpers::map_method;
+use request::{Method, Request, RequestStartLine};
 
-mod helpers;
 pub mod error;
+mod helpers;
 pub mod request;
 
 enum Parser {
@@ -36,7 +35,7 @@ where
     let start_line = loop {
         if let Some(line) = find_line(&buf[cursor..]) {
             cursor += line.len() + 2;
-            break parse_req_start_line(line)?
+            break parse_req_start_line(line)?;
         }
 
         read_stream(source, buf)?;
@@ -46,24 +45,20 @@ where
 
     loop {
         if let Some(line) = find_line(&buf[cursor..]) {
-            match  parse_header_line(line, &mut headers) {
+            match parse_header_line(line, &mut headers) {
                 Parser::Incomplet => cursor += line.len() + 2,
                 Parser::Invalid(err) => return Err(err),
                 Parser::Complet => {
                     cursor += 2;
                     break;
-                }, 
+                }
             }
         } else {
             read_stream(source, buf)?;
         }
     }
 
-    let mut buf = buf.to_vec();
-    buf.reverse();
-    buf.truncate(cursor);
-
-    let body = match read_body(&buf, &headers) {
+    let body = match read_body(&buf[cursor..], &headers) {
         Ok(body) => body,
         Err(err) => match err {
             ParserError::Ignored => String::new(),
@@ -161,8 +156,6 @@ fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<Str
 
     let mut buf = vec![0u8; content_length];
     _ = source.read_exact(&mut buf);
-
-    buf.reverse();
 
     let Ok(body_txt) = String::from_utf8(buf) else {
         return Err(ParserError::InvalidInput);
