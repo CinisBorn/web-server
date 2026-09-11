@@ -32,52 +32,6 @@ pub struct Request {
     body: String,
 }
 
-/// The headers of request.
-#[derive(Debug, Default)]
-pub struct ReqHeaders {
-    host: Option<String>,
-    user_agent: Option<String>,
-    accept: Option<String>,
-    content_length: Option<usize>,
-}
-
-impl ReqHeaders {
-    /// Creates a new instance of `ReqHeaders`.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Sets the host of request.
-    pub fn set_host(&mut self, value: &str) {
-        self.host = Some(value.to_string());
-    }
-
-    /// Returns the host of request.
-    pub fn host(&self) -> Option<&str> {
-        self.host.as_deref()
-    }
-
-    /// Sets the user agent of request.
-    pub fn set_user_agent(&mut self, value: &str) {
-        self.user_agent = Some(value.to_string());
-    }
-
-    /// Returns the user agent of request.
-    pub fn user_agent(&self) -> Option<&str> {
-        self.user_agent.as_deref()
-    }
-
-    /// Sets the value of accept header.
-    pub fn set_accept(&mut self, value: &str) {
-        self.accept = Some(value.to_string());
-    }
-
-    /// Returns the value of accept header.
-    pub fn accept(&self) -> Option<&str> {
-        self.accept.as_deref()
-    }
-}
-
 #[derive(Debug)]
 /// The request start line. See more at
 /// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
@@ -120,7 +74,7 @@ impl Request {
         &self.start_line
     }
 
-    /// Returns a `ReqHeaders` containing headers of request
+    /// Returns the headers of request
     pub fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
