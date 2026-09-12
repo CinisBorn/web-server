@@ -32,15 +32,7 @@ where
     read_stream(source, buf)?;
     let mut cursor = 0;
 
-    let start_line = loop {
-        if let Some(line) = find_line(&buf[cursor..]) {
-            cursor += line.len() + 2;
-            break parse_req_start_line(line)?;
-        }
-
-        read_stream(source, buf)?;
-    };
-
+    let start_line = parse_req_start_line(source, buf, &mut cursor)?;
     let mut headers: HashMap<String, String> = HashMap::new();
 
     loop {
@@ -125,7 +117,23 @@ fn find_line(buf: &[u8]) -> Option<&[u8]> {
         .map(|pos| &buf[..pos])
 }
 
-fn parse_req_start_line(line: &[u8]) -> Result<RequestStartLine, ParserError> {
+fn parse_req_start_line<T>(
+    source: &mut T,
+    buf: &mut [u8],
+    cursor: &mut usize,
+) -> Result<RequestStartLine, ParserError> 
+where 
+    T: Read + Write
+{
+    let line = loop {
+        if let Some(b_line) = find_line(&buf[*cursor..]) {
+            *cursor += b_line.len() + 2;
+            break b_line;
+        }
+
+        read_stream(source, buf)?;
+    };
+    
     let mut items = line.split(|byte| *byte == b' ');
 
     let method = items.next().ok_or(ParserError::InvalidInput)?;
