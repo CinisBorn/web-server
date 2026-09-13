@@ -69,8 +69,8 @@ fn parse_header_line<T>(
     source: &mut T,
     buf: &mut [u8],
     cursor: &mut usize,
-) -> Result<HashMap<String, String>, ParserError> 
-where 
+) -> Result<HashMap<String, String>, ParserError>
+where
     T: Read + Write,
 {
     let mut headers = HashMap::new();
@@ -78,28 +78,27 @@ where
     loop {
         if let Some(line) = find_line(&buf[*cursor..]) {
             *cursor += line.len() + 2;
-            
-            if line.is_empty(){
+
+            if line.is_empty() {
                 dbg!(&headers);
                 break Ok(headers);
             };
-            
-            
+
             let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
                 return Err(ParserError::InvalidInput);
             };
 
             let field = &line[..colon_position];
             let value = &line[colon_position + 2..];
-        
+
             let Ok(field) = std::str::from_utf8(field) else {
                 return Err(ParserError::InvalidInput);
             };
-        
+
             let Ok(value) = std::str::from_utf8(value) else {
                 return Err(ParserError::InvalidInput);
             };
-        
+
             headers.insert(field.to_owned(), value.to_owned());
         } else {
             read_stream(source, buf)?;
