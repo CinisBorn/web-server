@@ -14,12 +14,6 @@ pub mod error;
 mod helpers;
 pub mod request;
 
-enum Parser {
-    Complet,
-    Incomplet,
-    Invalid(ParserError),
-}
-
 /// Parses a incoming request.
 ///
 /// # Errors
@@ -33,22 +27,7 @@ where
     let mut cursor = 0;
 
     let start_line = parse_req_start_line(source, buf, &mut cursor)?;
-    let mut headers: HashMap<String, String> = HashMap::new();
-
-    loop {
-        if let Some(line) = find_line(&buf[cursor..]) {
-            match parse_header_line(line, &mut headers) {
-                Parser::Incomplet => cursor += line.len() + 2,
-                Parser::Invalid(err) => return Err(err),
-                Parser::Complet => {
-                    cursor += 2;
-                    break;
-                }
-            }
-        } else {
-            read_stream(source, buf)?;
-        }
-    }
+    let headers = parse_header_line(source, buf, &mut cursor)?;
 
     let body = match read_body(&buf[cursor..], &headers) {
         Ok(body) => body,
@@ -86,29 +65,46 @@ where
     }
 }
 
-fn parse_header_line(line: &[u8], headers: &mut HashMap<String, String>) -> Parser {
-    if line.is_empty() {
-        return Parser::Complet;
+fn parse_header_line<T>(
+    source: &mut T,
+    buf: &mut [u8],
+    cursor: &mut usize,
+) -> Result<HashMap<String, String>, ParserError> 
+where 
+    T: Read + Write,
+{
+    let mut headers = HashMap::new();
+
+    loop {
+        if let Some(line) = find_line(&buf[*cursor..]) {
+            *cursor += line.len() + 2;
+            
+            if line.is_empty(){
+                dbg!(&headers);
+                break Ok(headers);
+            };
+            
+            
+            let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
+                return Err(ParserError::InvalidInput);
+            };
+
+            let field = &line[..colon_position];
+            let value = &line[colon_position + 2..];
+        
+            let Ok(field) = std::str::from_utf8(field) else {
+                return Err(ParserError::InvalidInput);
+            };
+        
+            let Ok(value) = std::str::from_utf8(value) else {
+                return Err(ParserError::InvalidInput);
+            };
+        
+            headers.insert(field.to_owned(), value.to_owned());
+        } else {
+            read_stream(source, buf)?;
+        }
     }
-
-    let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
-        return Parser::Invalid(ParserError::InvalidInput);
-    };
-
-    let field = &line[..colon_position];
-    let value = &line[colon_position + 2..];
-
-    let Ok(field) = std::str::from_utf8(field) else {
-        return Parser::Invalid(ParserError::InvalidInput);
-    };
-
-    let Ok(value) = std::str::from_utf8(value) else {
-        return Parser::Invalid(ParserError::InvalidInput);
-    };
-
-    headers.insert(field.to_owned(), value.to_owned());
-
-    Parser::Incomplet
 }
 
 fn find_line(buf: &[u8]) -> Option<&[u8]> {
@@ -121,9 +117,9 @@ fn parse_req_start_line<T>(
     source: &mut T,
     buf: &mut [u8],
     cursor: &mut usize,
-) -> Result<RequestStartLine, ParserError> 
-where 
-    T: Read + Write
+) -> Result<RequestStartLine, ParserError>
+where
+    T: Read + Write,
 {
     let line = loop {
         if let Some(b_line) = find_line(&buf[*cursor..]) {
@@ -133,7 +129,7 @@ where
 
         read_stream(source, buf)?;
     };
-    
+
     let mut items = line.split(|byte| *byte == b' ');
 
     let method = items.next().ok_or(ParserError::InvalidInput)?;
