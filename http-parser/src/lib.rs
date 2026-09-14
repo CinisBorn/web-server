@@ -29,7 +29,7 @@ where
     let start_line = parse_req_start_line(source, buf, &mut cursor)?;
     let headers = parse_header_line(source, buf, &mut cursor)?;
 
-    let body = match read_body(&buf[cursor..], &headers) {
+    let body = match read_body(source, buf, &mut cursor, &headers) {
         Ok(body) => body,
         Err(err) => match err {
             ParserError::Ignored => String::new(),
@@ -51,14 +51,14 @@ where
 /// Returns [`ParserError::Io(n)`] if any other I/O error occurs.
 ///
 /// It will retry if an [`ErrorKind::Interrupted`] occurs.
-fn read_stream<'a, T>(stream: &mut T, buf: &'a mut [u8]) -> Result<&'a [u8], ParserError>
+fn read_stream<'a, T>(stream: &mut T, buf: &'a mut [u8]) -> Result<usize, ParserError>
 where
     T: Read + Write,
 {
     loop {
         match stream.read(buf) {
             Ok(0) => return Err(ParserError::ConnClosed),
-            Ok(n) => return Ok(&buf[..n]),
+            Ok(n) => return Ok(n),
             Err(e) if e.kind() == Interrupted => {}
             Err(e) => return Err(ParserError::Io(e)),
         }
@@ -80,7 +80,6 @@ where
             *cursor += line.len() + 2;
 
             if line.is_empty() {
-                dbg!(&headers);
                 break Ok(headers);
             };
 
@@ -148,7 +147,15 @@ where
     Ok(req_start_line)
 }
 
-fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<String, ParserError> {
+fn read_body<T>(
+    source: &mut T, 
+    buf: &mut [u8],
+    cursor: &mut usize,
+    headers: &HashMap<String, String>
+) -> Result<String, ParserError> 
+where 
+    T: Read + Write
+{
     let Some(content_length) = headers.get("Content-length") else {
         return Err(ParserError::Ignored);
     };
@@ -157,10 +164,20 @@ fn read_body(mut source: &[u8], headers: &HashMap<String, String>) -> Result<Str
         return Err(ParserError::InvalidInput);
     };
 
-    let mut buf = vec![0u8; content_length];
-    _ = source.read_exact(&mut buf);
-
-    let Ok(body_txt) = String::from_utf8(buf) else {
+    let available_data = &mut buf[*cursor..];
+    let from_buffer  = available_data.len().min(content_length);
+    let mut body_buf = vec![0u8; content_length];
+    body_buf[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
+   
+    let remaining = content_length - from_buffer;
+    
+    if remaining > 0 {
+        source
+            .read_exact(&mut body_buf[from_buffer..])
+            .map_err(|err| ParserError::Io(err))?;
+    }
+    
+    let Ok(body_txt) = String::from_utf8(body_buf) else {
         return Err(ParserError::InvalidInput);
     };
 

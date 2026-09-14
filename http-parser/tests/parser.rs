@@ -2,6 +2,8 @@
 use http_parser::{parse_req, request::Method};
 use std::io::{Cursor, Write};
 
+const BUF_SIZE: usize = 8192;
+
 const BASIC_REQUEST: &[u8; 103] = b"GET / HTTP/1.1\r\n\
     User-agent: mock\r\n\
     Host: 127.0.0.1\r\n\
@@ -10,7 +12,14 @@ const BASIC_REQUEST: &[u8; 103] = b"GET / HTTP/1.1\r\n\
     \r\n\
     hello";
 
-
+const REQUEST_WITH_INCOMPLETE_BODY: &[u8; 100] = b"GET / HTTP/1.1\r\n\
+    User-agent: mock\r\n\
+    Host: 127.0.0.1\r\n\
+    Accept: application/json\r\n\
+    Content-length: 5\r\n\
+    \r\n\
+    he";
+    
 fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
     let mut source = Cursor::new(Vec::with_capacity(capacity));
 
@@ -22,7 +31,7 @@ fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
 
 #[test]
 fn request_is_parsed_correctly() {
-    let mut source = mock_source(BASIC_REQUEST, 8192);
+    let mut source = mock_source(BASIC_REQUEST, BUF_SIZE);
     let mut buf = [0u8; 103];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
@@ -36,7 +45,7 @@ fn request_is_parsed_correctly() {
 
 #[test]
 fn start_line_is_parsed_correctly() {
-    let mut source = mock_source(BASIC_REQUEST, 8192);
+    let mut source = mock_source(BASIC_REQUEST, BUF_SIZE);
     let mut buf = [0u8; 103];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
@@ -48,10 +57,19 @@ fn start_line_is_parsed_correctly() {
 
 #[test]
 fn request_with_body_is_parsed_correctly() {
-    let mut source = mock_source(BASIC_REQUEST, 8192);
+    let mut source = mock_source(BASIC_REQUEST, BUF_SIZE);
     let mut buf = [0u8; 103];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
 
     assert_eq!(req.body(), "hello");
+}
+
+#[test] 
+#[should_panic]
+fn retry_if_body_is_incomplete() {
+    let mut source = mock_source(REQUEST_WITH_INCOMPLETE_BODY, BUF_SIZE);
+    let mut buf = [0u8; 100];
+
+    parse_req(&mut source, &mut buf).unwrap();
 }
