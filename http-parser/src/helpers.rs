@@ -1,6 +1,6 @@
-use crate::{Method, ParserError};
+use crate::{Method, ParserErr};
 
-pub(crate) fn map_method(method: &str) -> Result<Method, ParserError> {
+pub(crate) fn map_method(method: &str) -> Result<Method, ParserErr> {
     match method {
         "GET" => Ok(Method::GET),
         "POST" => Ok(Method::POST),
@@ -10,6 +10,6 @@ pub(crate) fn map_method(method: &str) -> Result<Method, ParserError> {
         "PUT" => Ok(Method::PUT),
         "OPTIONS" => Ok(Method::OPTIONS),
         "HEAD" => Ok(Method::HEAD),
-        _ => Err(ParserError::UnknownMethod(method.to_string())),
+        _ => Err(ParserErr::UnknownMethod(method.to_string())),
     }
 }

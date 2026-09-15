@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-/// The HTTP method of `Request`.
+/// The HTTP method of `Req`.
 #[derive(Debug, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Method {
@@ -26,8 +26,8 @@ pub enum Method {
 
 /// Represents the client request.
 #[derive(Debug)]
-pub struct Request {
-    start_line: RequestStartLine,
+pub struct Req {
+    start_line: ReqStartLine,
     headers: HashMap<String, String>,
     body: String,
 }
@@ -37,13 +37,13 @@ pub struct Request {
 /// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
 ///
 /// The HTTP version isn't necessary because this parser will forever support only http/1.1
-pub struct RequestStartLine {
+pub struct ReqStartLine {
     method: Method,
     target: String,
 }
 
-impl RequestStartLine {
-    /// Creates a new instance of `RequestStartLine`.
+impl ReqStartLine {
+    /// Creates a new instance of `ReqStartLine`.
     pub fn new(method: Method, target: String) -> Self {
         Self { method, target }
     }
@@ -59,10 +59,10 @@ impl RequestStartLine {
     }
 }
 
-impl Request {
-    /// Creates a new structured client `Request`.
+impl Req {
+    /// Creates a new structured client `Req`.
     pub fn new(
-        start_line: RequestStartLine,
+        start_line: ReqStartLine,
         headers: HashMap<String, String>,
         body: String,
     ) -> Self {
@@ -74,7 +74,7 @@ impl Request {
     }
 
     /// Returns the request's  start line.
-    pub fn start_line(&self) -> &RequestStartLine {
+    pub fn start_line(&self) -> &ReqStartLine {
         &self.start_line
     }
 

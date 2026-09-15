@@ -4,7 +4,7 @@
 
 /// The parser errors
 #[derive(Debug)]
-pub enum ParserError {
+pub enum ParserErr {
     ///  A wrapper around of `std::io::Error`.
     Io(std::io::Error),
     /// The connection was closed.
@@ -23,20 +23,20 @@ pub enum ParserError {
     Ignored
 }
 
-impl std::error::Error for ParserError {}
-impl std::fmt::Display for ParserError {
+impl std::error::Error for ParserErr {}
+impl std::fmt::Display for ParserErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParserError::UnknownMethod(m) => write!(f, "{m}"),
-            ParserError::ConnClosed => write!(f, "Connection was closed"),
-            ParserError::Io(m) => write!(f, "{m}"),
-            ParserError::InvalidInput => write!(f, "Unexpected input"),
-            ParserError::Ignored => write!(f, "")
+            ParserErr::UnknownMethod(m) => write!(f, "{m}"),
+            ParserErr::ConnClosed => write!(f, "Connection was closed"),
+            ParserErr::Io(m) => write!(f, "{m}"),
+            ParserErr::InvalidInput => write!(f, "Unexpected input"),
+            ParserErr::Ignored => write!(f, "")
         }
     }
 }
 
-impl From<std::io::Error> for ParserError {
+impl From<std::io::Error> for ParserErr {
     fn from(value: std::io::Error) -> Self {
         Self::Io(value)
     }

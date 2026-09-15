@@ -19,7 +19,7 @@ const REQUEST_WITH_INCOMPLETE_BODY: &[u8; 100] = b"GET / HTTP/1.1\r\n\
     Content-length: 5\r\n\
     \r\n\
     he";
-    
+
 fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
     let mut source = Cursor::new(Vec::with_capacity(capacity));
 
@@ -65,7 +65,7 @@ fn request_with_body_is_parsed_correctly() {
     assert_eq!(req.body(), "hello");
 }
 
-#[test] 
+#[test]
 #[should_panic]
 fn retry_if_body_is_incomplete() {
     let mut source = mock_source(REQUEST_WITH_INCOMPLETE_BODY, BUF_SIZE);

@@ -6,38 +6,35 @@ use std::collections::HashMap;
 use std::io::ErrorKind::Interrupted;
 use std::io::{Read, Write};
 
-use error::ParserError;
+use error::ParserErr;
 use helpers::map_method;
-use request::{Method, Request, RequestStartLine};
+use request::{Method, Req, ReqStartLine};
 
-pub mod error;
 mod helpers;
+pub mod error;
 pub mod request;
 
 /// Parses a incoming request.
 ///
 /// # Errors
 ///
-/// Returns a [`ParserError`] if it's not possible to parse the request.
-pub fn parse_req<T>(source: &mut T, buf: &mut [u8]) -> Result<Request, ParserError>
-where
-    T: Read + Write,
-{
-    read_stream(source, buf)?;
+/// Returns a [`ParserErr`] if it's not possible to parse the request.
+pub fn parse_req<T: Read + Write>(src: &mut T, content: &mut [u8] ) -> Result<Req, ParserErr> {
+    read_src(src, content)?;
     let mut cursor = 0;
 
-    let start_line = parse_req_start_line(source, buf, &mut cursor)?;
-    let headers = parse_header_line(source, buf, &mut cursor)?;
+    let start_line = parse_req_line(src, content, &mut cursor)?;
+    let headers = parse_headers(src, content, &mut cursor)?;
 
-    let body = match read_body(source, buf, &mut cursor, &headers) {
+    let body = match read_body(src, content, &mut cursor, &headers) {
         Ok(body) => body,
         Err(err) => match err {
-            ParserError::Ignored => String::new(),
+            ParserErr::Ignored => String::new(),
             _ => return Err(err),
         },
     };
 
-    Ok(Request::new(start_line, headers, body))
+    Ok(Req::new(start_line, headers, body))
 }
 
 /// Attempts to read bytes from a stream.
@@ -46,37 +43,37 @@ where
 ///
 /// # Errors
 ///
-/// Returns [`ParserError::ConnClosed`] if the client closes the connection.
+/// Returns [`ParserErr::ConnClosed`] if the client closes the connection.
 ///
-/// Returns [`ParserError::Io(n)`] if any other I/O error occurs.
+/// Returns [`ParserErr::Io(n)`] if any other I/O error occurs.
 ///
 /// It will retry if an [`ErrorKind::Interrupted`] occurs.
-fn read_stream<'a, T>(stream: &mut T, buf: &'a mut [u8]) -> Result<usize, ParserError>
+fn read_src<T>(src: &mut T, buf: &mut [u8]) -> Result<usize, ParserErr>
 where
     T: Read + Write,
 {
     loop {
-        match stream.read(buf) {
-            Ok(0) => return Err(ParserError::ConnClosed),
+        match src.read(buf) {
+            Ok(0) => return Err(ParserErr::ConnClosed),
             Ok(n) => return Ok(n),
             Err(e) if e.kind() == Interrupted => {}
-            Err(e) => return Err(ParserError::Io(e)),
+            Err(e) => return Err(ParserErr::Io(e)),
         }
     }
 }
 
-fn parse_header_line<T>(
-    source: &mut T,
-    buf: &mut [u8],
+fn parse_headers<T>(
+    src: &mut T,
+    content: &mut [u8],
     cursor: &mut usize,
-) -> Result<HashMap<String, String>, ParserError>
+) -> Result<HashMap<String, String>, ParserErr>
 where
     T: Read + Write,
 {
     let mut headers = HashMap::new();
 
     loop {
-        if let Some(line) = find_line(&buf[*cursor..]) {
+        if let Some(line) = find_line(&content[*cursor..]) {
             *cursor += line.len() + 2;
 
             if line.is_empty() {
@@ -84,23 +81,23 @@ where
             };
 
             let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
-                return Err(ParserError::InvalidInput);
+                return Err(ParserErr::InvalidInput);
             };
 
             let field = &line[..colon_position];
             let value = &line[colon_position + 2..];
 
             let Ok(field) = std::str::from_utf8(field) else {
-                return Err(ParserError::InvalidInput);
+                return Err(ParserErr::InvalidInput);
             };
 
             let Ok(value) = std::str::from_utf8(value) else {
-                return Err(ParserError::InvalidInput);
+                return Err(ParserErr::InvalidInput);
             };
 
             headers.insert(field.to_owned(), value.to_owned());
         } else {
-            read_stream(source, buf)?;
+            read_src(src, content)?;
         }
     }
 }
@@ -111,74 +108,74 @@ fn find_line(buf: &[u8]) -> Option<&[u8]> {
         .map(|pos| &buf[..pos])
 }
 
-fn parse_req_start_line<T>(
-    source: &mut T,
-    buf: &mut [u8],
+fn parse_req_line<T>(
+    src: &mut T,
+    content: &mut [u8],
     cursor: &mut usize,
-) -> Result<RequestStartLine, ParserError>
+) -> Result<ReqStartLine, ParserErr>
 where
     T: Read + Write,
 {
     let line = loop {
-        if let Some(b_line) = find_line(&buf[*cursor..]) {
-            *cursor += b_line.len() + 2;
-            break b_line;
+        if let Some(line) = find_line(&content[*cursor..]) {
+            *cursor += line.len() + 2;
+            break line;
         }
 
-        read_stream(source, buf)?;
+        read_src(src, content)?;
     };
 
     let mut items = line.split(|byte| *byte == b' ');
 
-    let method = items.next().ok_or(ParserError::InvalidInput)?;
-    let target = items.next().ok_or(ParserError::InvalidInput)?;
+    let method = items.next().ok_or(ParserErr::InvalidInput)?;
+    let target = items.next().ok_or(ParserErr::InvalidInput)?;
 
     let Ok(method) = std::str::from_utf8(method) else {
-        return Err(ParserError::InvalidInput);
+        return Err(ParserErr::InvalidInput);
     };
 
     let Ok(target) = std::str::from_utf8(target) else {
-        return Err(ParserError::InvalidInput);
+        return Err(ParserErr::InvalidInput);
     };
 
     let method = map_method(method)?;
-    let req_start_line = RequestStartLine::new(method, target.to_owned());
+    let req_start_line = ReqStartLine::new(method, target.to_owned());
 
     Ok(req_start_line)
 }
 
 fn read_body<T>(
-    source: &mut T, 
-    buf: &mut [u8],
+    src: &mut T, 
+    content: &mut [u8],
     cursor: &mut usize,
     headers: &HashMap<String, String>
-) -> Result<String, ParserError> 
+) -> Result<String, ParserErr> 
 where 
     T: Read + Write
 {
     let Some(content_length) = headers.get("Content-length") else {
-        return Err(ParserError::Ignored);
+        return Err(ParserErr::Ignored);
     };
 
     let Ok(content_length) = content_length.parse::<usize>() else {
-        return Err(ParserError::InvalidInput);
+        return Err(ParserErr::InvalidInput);
     };
 
-    let available_data = &mut buf[*cursor..];
-    let from_buffer  = available_data.len().min(content_length);
-    let mut body_buf = vec![0u8; content_length];
-    body_buf[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
-   
+    let available_data = &mut content[*cursor..];
+    let from_buffer = available_data.len().min(content_length);
     let remaining = content_length - from_buffer;
+    let mut body = vec![0u8; content_length];
     
+    body[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
+   
     if remaining > 0 {
-        source
-            .read_exact(&mut body_buf[from_buffer..])
-            .map_err(|err| ParserError::Io(err))?;
+        src
+            .read_exact(&mut body[from_buffer..])
+            .map_err(|err| ParserErr::Io(err))?;
     }
     
-    let Ok(body_txt) = String::from_utf8(body_buf) else {
-        return Err(ParserError::InvalidInput);
+    let Ok(body_txt) = String::from_utf8(body) else {
+        return Err(ParserErr::InvalidInput);
     };
 
     Ok(body_txt)
