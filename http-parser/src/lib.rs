@@ -13,13 +13,14 @@ use request::{Method, Req, ReqStartLine};
 mod helpers;
 pub mod error;
 pub mod request;
+pub mod response;
 
 /// Parses a incoming request.
 ///
 /// # Errors
 ///
 /// Returns a [`ParserErr`] if it's not possible to parse the request.
-pub fn parse_req<T: Read + Write>(src: &mut T, content: &mut [u8] ) -> Result<Req, ParserErr> {
+pub fn parse_req<T: Read + Write>(src: &mut T, content: &mut [u8]) -> Result<Req, ParserErr> {
     read_src(src, content)?;
     let mut cursor = 0;
 
@@ -145,13 +146,13 @@ where
 }
 
 fn read_body<T>(
-    src: &mut T, 
+    src: &mut T,
     content: &mut [u8],
     cursor: &mut usize,
-    headers: &HashMap<String, String>
-) -> Result<String, ParserErr> 
-where 
-    T: Read + Write
+    headers: &HashMap<String, String>,
+) -> Result<String, ParserErr>
+where
+    T: Read + Write,
 {
     let Some(content_length) = headers.get("Content-length") else {
         return Err(ParserErr::Ignored);
@@ -165,15 +166,14 @@ where
     let from_buffer = available_data.len().min(content_length);
     let remaining = content_length - from_buffer;
     let mut body = vec![0u8; content_length];
-    
+
     body[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
-   
+
     if remaining > 0 {
-        src
-            .read_exact(&mut body[from_buffer..])
+        src.read_exact(&mut body[from_buffer..])
             .map_err(|err| ParserErr::Io(err))?;
     }
-    
+
     let Ok(body_txt) = String::from_utf8(body) else {
         return Err(ParserErr::InvalidInput);
     };

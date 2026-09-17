@@ -22,15 +22,8 @@ pub struct ConnectionStream {
 
 impl ConnectionStream {
     /// Sends a reponse to client
-    pub fn send_response(&mut self) {
-        let _ = self.stream.write(
-            b"HTTP/1.1 200 OK\r\n\
-        Content-Type: text/plain\r\n\
-        Content-Length: 5\r\n\
-        \r\n\
-        Hello
-        ",
-        );
+    pub fn send_response(&mut self, content: &[u8]) {
+        let _ = self.stream.write(content);
     }
 
     /// Returns a mutable reference of `TcpStream`.
