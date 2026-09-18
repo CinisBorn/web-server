@@ -45,23 +45,13 @@ impl Response {
         
         let status = self.status.code();
         let status_line = format!("HTTP/1.1 {} \r\n", status);
+        let length_header = format!("Content-length: {}\r\n", body.len());
         
-        status_line.as_bytes().iter().for_each(|byte| {
-            response.push(byte.to_owned());
-        });
+        response.extend_from_slice(status_line.as_bytes());
+        response.extend_from_slice(length_header.as_bytes());
+        response.extend_from_slice(b"\r\n");
+        response.extend_from_slice(body);
 
-        format!("Content-length: {}\r\n", body.len()).as_bytes().iter().for_each(|byte| {
-            response.push(byte.to_owned());
-        });
-
-        b"\r\n".iter().for_each(|byte| {
-            response.push(byte.to_owned());
-        });
-
-        body.iter().for_each(|byte| {
-            response.push(byte.to_owned())
-        });
-        
         response
     }
 }
