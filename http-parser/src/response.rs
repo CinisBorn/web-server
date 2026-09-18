@@ -11,15 +11,21 @@ pub enum CodeStatus {
     NotFound,
     /// Represents the HTTP status code: `400`.
     BadRequest,
+    /// Represents the HTTP status code: `204`.
+    NoContent, 
+    /// Represents the HTTP status code: `304`.
+    NotModified
 }
 
 impl CodeStatus {
     /// gets the numeric code from phrasal code.
     fn code(&self) -> String {
         match self {
-            CodeStatus::Ok => 200.to_string(),
-            CodeStatus::BadRequest => 400.to_string(),
-            CodeStatus::NotFound => 404.to_string(),
+            CodeStatus::Ok          => 200.to_string(),
+            CodeStatus::BadRequest  => 400.to_string(),
+            CodeStatus::NotFound    => 404.to_string(),
+            CodeStatus::NoContent   => 204.to_string(),
+            CodeStatus::NotModified => 304.to_string()
         }
     }
 }
@@ -45,45 +51,52 @@ impl Response {
     /// Serializes the HTTP response.
     pub fn serialize(&mut self) -> Vec<u8> {
         let mut response: Vec<u8> = Vec::new();
-        let headers = &mut self.headers;
         
+        let headers = &mut self.headers;
         let body = &self.body;
-
         let status = self.status.code();
 
-        if !body.is_empty() {
+        if will_send_content(&status) {
             headers.insert("Content-Length".to_string(), body.len().to_string());
         }
-        
+
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
-    
-        response.extend_from_slice(b"\r\n");
-        response.extend_from_slice(body);
+        serialize_body(body, &status, &mut response);
 
         response
     }
 }
 
-fn sereliaze_status_line(
-    version: &str, 
-    status: &str, 
-    response: &mut Vec<u8>
-) {
+fn sereliaze_status_line(version: &str, status: &str, response: &mut Vec<u8>) {
     response.extend_from_slice(version.as_bytes());
     response.extend_from_slice(b" ");
     response.extend_from_slice(status.as_bytes());
     response.extend_from_slice(b"\r\n");
 }
 
-fn serialize_headers(
-    headers: &mut HashMap<String, String>, 
-    response: &mut Vec<u8>
-) {
+fn serialize_headers(headers: &mut HashMap<String, String>, response: &mut Vec<u8>) {
     for (key, value) in headers {
         response.extend_from_slice(key.as_bytes());
         response.extend_from_slice(b":");
         response.extend_from_slice(value.as_bytes());
         response.extend_from_slice(b"\r\n");
+    }
+}
+
+fn serialize_body(body: &Vec<u8>, status: &str, response: &mut Vec<u8>) {
+    if !will_send_content(status) {
+        return ()
+    }
+    
+    response.extend_from_slice(b"\r\n");
+    response.extend_from_slice(body);
+}
+
+fn will_send_content(status: &str) -> bool {
+    match status {
+        "304" => return false,
+        "204" => return false,
+        _ => true
     }
 }
