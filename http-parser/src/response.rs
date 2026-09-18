@@ -13,11 +13,11 @@ pub enum CodeStatus {
 
 impl CodeStatus {
     /// gets the numeric code from phrasal code. 
-    fn code(&self) -> u16 {
+    fn code(&self) -> String {
         match self {
-            CodeStatus::Ok => 200,
-            CodeStatus::BadRequest => 400,
-            CodeStatus::NotFound => 404,
+            CodeStatus::Ok => 200.to_string(),
+            CodeStatus::BadRequest => 400.to_string(),
+            CodeStatus::NotFound => 404.to_string(),
         }
     }
 }
@@ -44,14 +44,20 @@ impl Response {
         let body = &self.body;
         
         let status = self.status.code();
-        let status_line = format!("HTTP/1.1 {} \r\n", status);
         let length_header = format!("Content-length: {}\r\n", body.len());
-        
-        response.extend_from_slice(status_line.as_bytes());
+
+        sereliaze_status_line("HTTP/1.1", &status, &mut response);
         response.extend_from_slice(length_header.as_bytes());
         response.extend_from_slice(b"\r\n");
         response.extend_from_slice(body);
 
         response
     }
+}
+
+fn sereliaze_status_line(version: &str, status: &str, response: &mut Vec<u8>) {
+    response.extend_from_slice(version.as_bytes());
+    response.extend_from_slice(b" ");
+    response.extend_from_slice(status.as_bytes());
+    response.extend_from_slice(b"\r\n");
 }
