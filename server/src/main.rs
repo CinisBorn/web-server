@@ -4,7 +4,7 @@
 //! anything else.
 
 use connection::Connection;
-use http_parser::response::{Response, CodeStatus};
+use http_parser::response::{CodeStatus, Response};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = Connection::new()?;
@@ -12,10 +12,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let mut stream = conn.connect()?;
         let mut buf = [0u8; 8192];
-        let _ = http_parser::parse_req(stream.stream_mut(), &mut buf);
-        let mut response = Response::build(CodeStatus::Ok, b"HELLO WORLD FROM SERVER-SIDE"); 
+        let req = http_parser::parse_req(stream.stream_mut(), &mut buf).unwrap();
+        let mut response = Response::build(CodeStatus::Ok, b"HELLO WORLD FROM SERVER-SIDE");
+        let method = req.start_line().method();
         
-        dbg!(&response.serialize());
-        stream.send_response(response.serialize().as_slice());
+
+        dbg!(&response.serialize(method));
+        stream.send_response(response.serialize(method).as_slice());
     }
 }

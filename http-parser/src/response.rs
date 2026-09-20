@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use crate::request::Method;
+
 /// The response code status.
 #[derive(Debug)]
 pub enum CodeStatus {
@@ -49,20 +51,24 @@ impl Response {
     }
 
     /// Serializes the HTTP response.
-    pub fn serialize(&mut self) -> Vec<u8> {
+    pub fn serialize(&mut self, method: &Method) -> Vec<u8> {
         let mut response: Vec<u8> = Vec::new();
         
         let headers = &mut self.headers;
         let body = &self.body;
         let status = self.status.code();
+        let has_body = will_send_content(&status, method);
 
-        if will_send_content(&status) {
+        if has_body {
             headers.insert("Content-Length".to_string(), body.len().to_string());
         }
 
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
-        serialize_body(body, &status, &mut response);
+
+        if has_body {
+            serialize_body(body,&mut response);
+        }
 
         response
     }
@@ -84,19 +90,22 @@ fn serialize_headers(headers: &mut HashMap<String, String>, response: &mut Vec<u
     }
 }
 
-fn serialize_body(body: &Vec<u8>, status: &str, response: &mut Vec<u8>) {
-    if !will_send_content(status) {
-        return ()
-    }
-    
+fn serialize_body(body: &Vec<u8>, response: &mut Vec<u8>) {
     response.extend_from_slice(b"\r\n");
     response.extend_from_slice(body);
 }
 
-fn will_send_content(status: &str) -> bool {
-    match status {
-        "304" => return false,
-        "204" => return false,
+fn will_send_content(status: &str, method: &Method) -> bool {
+    let method = match method {
+        Method::HEAD => false,
+        _ => true,
+    };
+    
+    let status = match status {
+        "304" => false,
+        "204" => false,
         _ => true
-    }
+    };
+
+    method && status
 }
