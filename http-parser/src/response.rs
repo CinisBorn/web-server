@@ -65,6 +65,8 @@ impl Response {
 
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
+        
+        response.extend_from_slice(b"\r\n"); // mandatory body break line
 
         if has_body {
             serialize_body(body,&mut response);
@@ -84,14 +86,13 @@ fn sereliaze_status_line(version: &str, status: &str, response: &mut Vec<u8>) {
 fn serialize_headers(headers: &mut HashMap<String, String>, response: &mut Vec<u8>) {
     for (key, value) in headers {
         response.extend_from_slice(key.as_bytes());
-        response.extend_from_slice(b":");
+        response.extend_from_slice(b": ");
         response.extend_from_slice(value.as_bytes());
         response.extend_from_slice(b"\r\n");
     }
 }
 
 fn serialize_body(body: &Vec<u8>, response: &mut Vec<u8>) {
-    response.extend_from_slice(b"\r\n");
     response.extend_from_slice(body);
 }
 
