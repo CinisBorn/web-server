@@ -18,7 +18,6 @@ const BASIC_REQUEST: &[u8; 103] = b"GET / HTTP/1.1\r\n\
     \r\n\
     hello";
 
-
 fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
     let mut source = Cursor::new(Vec::with_capacity(capacity));
 
@@ -54,10 +53,10 @@ fn parse_response() {
 #[test]
 fn do_not_include_body() {
     let req = mock_basic_request();
-    
+
     let mut response = Response::build(CodeStatus::Ok, req.body().as_bytes());
     let response = response.serialize_to_string(&Method::HEAD);
     let expected = String::from_utf8(b"HTTP/1.1 200\r\n\r\n".to_vec()).unwrap();
-    
+
     assert_eq!(response, expected);
 }
