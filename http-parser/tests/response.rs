@@ -1,6 +1,6 @@
 //! Tests related to response parsing.
 
-use http_parser::request::{Method, Req};
+use http_parser::request::{Method, Request};
 use http_parser::{
     parse_req,
     response::{CodeStatus, Response},
@@ -27,7 +27,7 @@ fn mock_source(content: &[u8], capacity: usize) -> Cursor<Vec<u8>> {
     source
 }
 
-fn mock_basic_request() -> Req {
+fn mock_basic_request() -> Request {
     let mut src = mock_source(BASIC_REQUEST, CAPACITY);
     let mut buf = [0u8; 103];
     let req = parse_req(&mut src, &mut buf).unwrap();

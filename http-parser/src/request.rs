@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-/// The HTTP method of `Req`.
+/// The HTTP method of `Request`.
 #[derive(Debug, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Method {
@@ -26,7 +26,7 @@ pub enum Method {
 
 /// Represents the client request.
 #[derive(Debug)]
-pub struct Req {
+pub struct Request {
     start_line: ReqStartLine,
     headers: HashMap<String, String>,
     body: String,
@@ -59,8 +59,9 @@ impl ReqStartLine {
     }
 }
 
-impl Req {
-    /// Creates a new structured client `Req`.
+impl Request
+ {
+    /// Creates a new structured client `Request`.
     pub fn new(
         start_line: ReqStartLine,
         headers: HashMap<String, String>,

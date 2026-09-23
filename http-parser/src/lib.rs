@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 
 use error::ParserErr;
 use helpers::map_method;
-use request::{Method, Req, ReqStartLine};
+use request::{Method, Request, ReqStartLine};
 
 mod helpers;
 pub mod error;
@@ -20,7 +20,10 @@ pub mod response;
 /// # Errors
 ///
 /// Returns a [`ParserErr`] if it's not possible to parse the request.
-pub fn parse_req<T: Read + Write>(src: &mut T, content: &mut [u8]) -> Result<Req, ParserErr> {
+pub fn parse_req<T>(src: &mut T, content: &mut [u8]) -> Result<Request, ParserErr> 
+where
+  T: Read + Write  
+{
     read_src(src, content)?;
     let mut cursor = 0;
 
@@ -35,7 +38,7 @@ pub fn parse_req<T: Read + Write>(src: &mut T, content: &mut [u8]) -> Result<Req
         },
     };
 
-    Ok(Req::new(start_line, headers, body))
+    Ok(Request::new(start_line, headers, body))
 }
 
 /// Attempts to read bytes from a stream.
