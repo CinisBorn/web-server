@@ -41,7 +41,7 @@ fn parse_response() {
     let req = mock_basic_request();
 
     let mut response = Response::build(CodeStatus::Ok, req.body().as_bytes());
-    let response = String::from_utf8(response.serialize(&Method::GET)).unwrap();
+    let response = response.serialize_to_string(&Method::GET);
     let expected: &[u8] = b"HTTP/1.1 200\r\n\
         Content-Length: 5\r\n\
         \r\n\
@@ -56,9 +56,8 @@ fn do_not_include_body() {
     let req = mock_basic_request();
     
     let mut response = Response::build(CodeStatus::Ok, req.body().as_bytes());
-    let response = String::from_utf8(response.serialize(&Method::HEAD)).unwrap();
-    let expected: &[u8] = b"HTTP/1.1 200\r\n\r\n";
-    let expected = String::from_utf8(expected.to_vec()).unwrap();
+    let response = response.serialize_to_string(&Method::HEAD);
+    let expected = String::from_utf8(b"HTTP/1.1 200\r\n\r\n".to_vec()).unwrap();
     
     assert_eq!(response, expected);
 }

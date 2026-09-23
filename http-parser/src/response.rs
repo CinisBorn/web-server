@@ -14,20 +14,20 @@ pub enum CodeStatus {
     /// Represents the HTTP status code: `400`.
     BadRequest,
     /// Represents the HTTP status code: `204`.
-    NoContent, 
+    NoContent,
     /// Represents the HTTP status code: `304`.
-    NotModified
+    NotModified,
 }
 
 impl CodeStatus {
     /// gets the numeric code from phrasal code.
     fn code(&self) -> String {
         match self {
-            CodeStatus::Ok          => 200.to_string(),
-            CodeStatus::BadRequest  => 400.to_string(),
-            CodeStatus::NotFound    => 404.to_string(),
-            CodeStatus::NoContent   => 204.to_string(),
-            CodeStatus::NotModified => 304.to_string()
+            CodeStatus::Ok => 200.to_string(),
+            CodeStatus::BadRequest => 400.to_string(),
+            CodeStatus::NotFound => 404.to_string(),
+            CodeStatus::NoContent => 204.to_string(),
+            CodeStatus::NotModified => 304.to_string(),
         }
     }
 }
@@ -53,7 +53,7 @@ impl Response {
     /// Serializes the HTTP response.
     pub fn serialize(&mut self, method: &Method) -> Vec<u8> {
         let mut response: Vec<u8> = Vec::new();
-        
+
         let headers = &mut self.headers;
         let body = &self.body;
         let status = self.status.code();
@@ -65,14 +65,20 @@ impl Response {
 
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
-        
+
         response.extend_from_slice(b"\r\n"); // mandatory body break line
 
         if has_body {
-            serialize_body(body,&mut response);
+            serialize_body(body, &mut response);
         }
 
         response
+    }
+
+    #[cfg(debug_assertions)]
+    /// Serializes a HTTP response and convert into `String`.
+    pub fn serialize_to_string(&mut self, method: &Method) -> String {
+        String::from_utf8(self.serialize(method)).unwrap()
     }
 }
 
@@ -101,11 +107,11 @@ fn will_send_content(status: &str, method: &Method) -> bool {
         Method::HEAD => false,
         _ => true,
     };
-    
+
     let status = match status {
         "304" => false,
         "204" => false,
-        _ => true
+        _ => true,
     };
 
     method && status
