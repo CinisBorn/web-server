@@ -57,7 +57,7 @@ impl Response {
         let headers = &mut self.headers;
         let body = &self.body;
         let status = self.status.code();
-        let has_body = will_send_content(&status, method);
+        let has_body = check_response(&status, method);
 
         if has_body {
             headers.insert("Content-Length".to_string(), body.len().to_string());
@@ -103,7 +103,8 @@ fn serialize_body(body: &[u8], response: &mut Vec<u8>) {
     response.extend_from_slice(body);
 }
 
-fn will_send_content(status: &str, method: &Method) -> bool {
+/// Checks if the response will have a body. 
+fn check_response(status: &str, method: &Method) -> bool {
     let method = !matches!(method, Method::HEAD);
     let status = !matches!(status, "304" | "204");
 
