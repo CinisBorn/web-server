@@ -82,7 +82,7 @@ where
 
             if line.is_empty() {
                 break Ok(headers);
-            };
+            }
 
             let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
                 return Err(ParserErr::InvalidInput);
@@ -167,8 +167,7 @@ where
     body[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
 
     if remaining > 0 {
-        src.read_exact(&mut body[from_buffer..])
-            .map_err(|err| ParserErr::Io(err))?;
+        src.read_exact(&mut body[from_buffer..]).map_err(ParserErr::Io)?;
     }
 
     let Ok(body_txt) = String::from_utf8(body) else {

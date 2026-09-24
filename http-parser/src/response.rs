@@ -76,6 +76,7 @@ impl Response {
     }
 
     #[cfg(debug_assertions)]
+    #[allow(clippy::missing_panics_doc)]
     /// Serializes a HTTP response and convert into `String`.
     pub fn serialize_to_string(&mut self, method: &Method) -> String {
         String::from_utf8(self.serialize(method)).unwrap()
@@ -98,21 +99,13 @@ fn serialize_headers(headers: &mut HashMap<String, String>, response: &mut Vec<u
     }
 }
 
-fn serialize_body(body: &Vec<u8>, response: &mut Vec<u8>) {
+fn serialize_body(body: &[u8], response: &mut Vec<u8>) {
     response.extend_from_slice(body);
 }
 
 fn will_send_content(status: &str, method: &Method) -> bool {
-    let method = match method {
-        Method::HEAD => false,
-        _ => true,
-    };
-
-    let status = match status {
-        "304" => false,
-        "204" => false,
-        _ => true,
-    };
+    let method = !matches!(method, Method::HEAD);
+    let status = !matches!(status, "304" | "204");
 
     method && status
 }
