@@ -43,7 +43,7 @@ fn parse_response() {
     let response = response.serialize_to_string(&Method::GET);
     let expected: &[u8] = b"HTTP/1.1 200\r\n\
         Content-Length: 5\r\n\
-        \r\n\
+    \r\n\
         hello";
     let expected = expected.to_vec();
 

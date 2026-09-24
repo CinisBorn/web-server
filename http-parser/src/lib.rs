@@ -7,7 +7,7 @@ use std::io::ErrorKind::Interrupted;
 use std::io::{Read, Write};
 
 use error::ParserErr;
-use helpers::map_method;
+use helpers::{map_method, find_line};
 use request::{Method, Request, ReqStartLine};
 
 mod helpers;
@@ -104,12 +104,6 @@ where
             read_src(src, content)?;
         }
     }
-}
-
-fn find_line(buf: &[u8]) -> Option<&[u8]> {
-    buf.windows(2)
-        .position(|w| w == b"\r\n")
-        .map(|pos| &buf[..pos])
 }
 
 fn parse_req_line<T>(
