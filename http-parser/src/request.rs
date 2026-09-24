@@ -24,10 +24,31 @@ pub enum Method {
     HEAD,
 }
 
+/// The available supported HTTP methods. 
+#[derive(Debug)]
+pub enum HttpVersion {
+    /// Represents the HTTP/1.1
+    /// 
+    /// Older version won't be supported.
+    V1, // aka HTTP/1.1 
+    /// Represents the unsupported http version. 
+    Unsupported(String)
+}
+
+impl HttpVersion {
+    /// Maps a string into [`HttpVersion`]
+    pub fn map(version: &str) -> Self {
+        match version {
+            "HTTP/1.1" => HttpVersion::V1,
+            v => HttpVersion::Unsupported(v.to_string()) // v = version
+        }
+    }
+}
+
 /// Represents the client request.
 #[derive(Debug)]
 pub struct Request {
-    start_line: ReqStartLine,
+    start_line: RequestLine,
     headers: HashMap<String, String>,
     body: String,
 }
@@ -37,15 +58,16 @@ pub struct Request {
 /// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
 ///
 /// The HTTP version isn't necessary because this parser will forever support only http/1.1
-pub struct ReqStartLine {
+pub struct RequestLine {
+    version: HttpVersion,
     method: Method,
     target: String,
 }
 
-impl ReqStartLine {
-    /// Creates a new instance of `ReqStartLine`.
-    pub fn new(method: Method, target: String) -> Self {
-        Self { method, target }
+impl RequestLine {
+    /// Creates a new instance of `RequestLine`.
+    pub fn new(version: HttpVersion, method: Method, target: String) -> Self {
+        Self { version, method, target }
     }
 
     /// Returns the HTTP method.
@@ -57,13 +79,18 @@ impl ReqStartLine {
     pub fn target(&self) -> &str {
         &self.target
     }
+
+    /// Returns the HTTP version of request
+    pub fn version(&self) -> &HttpVersion {
+        &self.version
+    }
 }
 
 impl Request
  {
     /// Creates a new structured client `Request`.
     pub fn new(
-        start_line: ReqStartLine,
+        start_line: RequestLine,
         headers: HashMap<String, String>,
         body: String,
     ) -> Self {
@@ -75,7 +102,7 @@ impl Request
     }
 
     /// Returns the request's  start line.
-    pub fn start_line(&self) -> &ReqStartLine {
+    pub fn start_line(&self) -> &RequestLine {
         &self.start_line
     }
 

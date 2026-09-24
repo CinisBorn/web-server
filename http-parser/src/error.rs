@@ -20,7 +20,9 @@ pub enum ParserErr {
     /// The parsing process was ignored. 
     /// 
     /// The main purpose of this variant is to signal a process was skipped. 
-    Ignored
+    Ignored,
+    /// The client made a request with an unsupported HTTP version. 
+    UnsupportedHttpVersion(String)
 }
 
 impl std::error::Error for ParserErr {}
@@ -31,7 +33,8 @@ impl std::fmt::Display for ParserErr {
             ParserErr::ConnClosed => write!(f, "Connection was closed"),
             ParserErr::Io(m) => write!(f, "{m}"),
             ParserErr::InvalidInput => write!(f, "Unexpected input"),
-            ParserErr::Ignored => write!(f, "")
+            ParserErr::Ignored => write!(f, ""),
+            Self::UnsupportedHttpVersion(version) => write!(f, "{version}")
         }
     }
 }

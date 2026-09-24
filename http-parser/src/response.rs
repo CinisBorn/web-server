@@ -103,7 +103,7 @@ fn serialize_body(body: &[u8], response: &mut Vec<u8>) {
     response.extend_from_slice(body);
 }
 
-/// Checks if the response will have a body. 
+/// Checks if the response will have a body.
 fn check_response(status: &str, method: &Method) -> bool {
     let method = !matches!(method, Method::HEAD);
     let status = !matches!(status, "304" | "204");

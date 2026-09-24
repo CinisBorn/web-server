@@ -1,5 +1,7 @@
 //! It will exhaustively checks for logical error in parsing functions
 use http_parser::{parse_req, request::Method};
+use http_parser::error::ParserErr;
+
 use std::io::{Cursor, Write};
 
 const BUF_SIZE: usize = 8192;
@@ -72,4 +74,16 @@ fn retry_if_body_is_incomplete() {
     let mut buf = [0u8; 100];
 
     parse_req(&mut source, &mut buf).unwrap();
+}
+
+#[test]
+fn fail_if_http_version_is_unsupported() -> Result<(), ()> {
+    let mut buf = [0u8; 18];
+    let mut src = mock_source(b"GET / HTTP/2.0\r\n\r\n", BUF_SIZE);
+    let req = parse_req(&mut src, &mut buf).err().unwrap();
+
+    match req {
+         ParserErr::UnsupportedHttpVersion(_) => return Ok(()),
+         _ => return Err(())
+    }
 }

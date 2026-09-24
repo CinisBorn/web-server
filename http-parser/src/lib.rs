@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 
 use error::ParserErr;
 use helpers::{map_method, find_line};
-use request::{Method, Request, ReqStartLine};
+use request::{Method, Request, RequestLine, HttpVersion};
 
 mod helpers;
 pub mod error;
@@ -28,8 +28,12 @@ where
     let mut cursor = 0;
 
     let start_line = parse_req_line(src, content, &mut cursor)?;
-    let headers = parse_headers(src, content, &mut cursor)?;
 
+    if let HttpVersion::Unsupported(version) = start_line.version() {
+        return Err(ParserErr::UnsupportedHttpVersion(version.to_owned()))
+    }
+    
+    let headers = parse_headers(src, content, &mut cursor)?;
     let body = match read_body(src, content, &mut cursor, &headers) {
         Ok(body) => body,
         Err(err) => match err {
@@ -110,7 +114,7 @@ fn parse_req_line<T>(
     src: &mut T,
     content: &mut [u8],
     cursor: &mut usize,
-) -> Result<ReqStartLine, ParserErr>
+) -> Result<RequestLine, ParserErr>
 where
     T: Read + Write,
 {
@@ -125,8 +129,9 @@ where
 
     let mut items = line.split(|byte| *byte == b' ');
 
-    let method = items.next().ok_or(ParserErr::InvalidInput)?;
-    let target = items.next().ok_or(ParserErr::InvalidInput)?;
+    let method  = items.next().ok_or(ParserErr::InvalidInput)?;
+    let target  = items.next().ok_or(ParserErr::InvalidInput)?;
+    let version = items.next().ok_or(ParserErr::InvalidInput)?;
 
     let Ok(method) = std::str::from_utf8(method) else {
         return Err(ParserErr::InvalidInput);
@@ -136,8 +141,14 @@ where
         return Err(ParserErr::InvalidInput);
     };
 
+    let Ok(version) = std::str::from_utf8(version) else {
+        return Err(ParserErr::InvalidInput);
+    };
+
     let method = map_method(method)?;
-    let req_start_line = ReqStartLine::new(method, target.to_owned());
+    let version = HttpVersion::map(version);
+    
+    let req_start_line = RequestLine::new(version, method, target.to_owned());
 
     Ok(req_start_line)
 }
