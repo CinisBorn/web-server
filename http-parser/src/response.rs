@@ -81,6 +81,14 @@ impl Response {
     pub fn serialize_to_string(&mut self, method: &Method) -> String {
         String::from_utf8(self.serialize(method)).unwrap()
     }
+
+    /// Returns the http status code from response
+    pub fn status(&self) -> u16 {
+        self.status
+            .code()
+            .parse::<u16>()
+            .expect("parse status code")
+    }
 }
 
 fn sereliaze_status_line(version: &str, status: &str, response: &mut Vec<u8>) {
