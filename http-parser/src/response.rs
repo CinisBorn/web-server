@@ -17,6 +17,8 @@ pub enum CodeStatus {
     NoContent,
     /// Represents the HTTP status code: `304`.
     NotModified,
+    /// Represents the HTTP status code: `505`.
+    HttpVersionNotSupported,
 }
 
 impl CodeStatus {
@@ -28,6 +30,7 @@ impl CodeStatus {
             CodeStatus::NotFound => 404.to_string(),
             CodeStatus::NoContent => 204.to_string(),
             CodeStatus::NotModified => 304.to_string(),
+            CodeStatus::HttpVersionNotSupported => 505.to_string(),
         }
     }
 }
@@ -37,16 +40,16 @@ impl CodeStatus {
 pub struct Response {
     status: CodeStatus,
     headers: HashMap<String, String>,
-    body: Vec<u8>,
+    body: Option<Vec<u8>>,
 }
 
 impl Response {
     /// Builds an HTTP response.
-    pub fn build(status: CodeStatus, body: &[u8]) -> Self {
+    pub fn build(status: CodeStatus, body: Option<&[u8]>) -> Self {
         Self {
             status,
             headers: HashMap::new(),
-            body: body.to_vec(),
+            body: body.map(|s| s.to_vec()),
         }
     }
 
@@ -57,20 +60,13 @@ impl Response {
         let headers = &mut self.headers;
         let body = &self.body;
         let status = self.status.code();
-        let has_body = check_response(&status, method);
+        let serialize_body = check_response(&status, method);
 
-        if has_body {
-            headers.insert("Content-Length".to_string(), body.len().to_string());
-        }
-
+        insert_content_length(headers, serialize_body, body.as_ref());
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
-
-        response.extend_from_slice(b"\r\n"); // mandatory body break line
-
-        if has_body {
-            serialize_body(body, &mut response);
-        }
+        
+        insert_body(body.as_ref(), &mut response, serialize_body);
 
         response
     }
@@ -107,8 +103,19 @@ fn serialize_headers(headers: &mut HashMap<String, String>, response: &mut Vec<u
     }
 }
 
-fn serialize_body(body: &[u8], response: &mut Vec<u8>) {
-    response.extend_from_slice(body);
+fn insert_body(
+    body: Option<&Vec<u8>>, 
+    response: &mut Vec<u8>, 
+    serialize_body: bool 
+) {
+    // mandatory body break line
+    response.extend_from_slice(b"\r\n"); 
+    
+    if let Some(body) = body {    
+        if serialize_body {
+            response.extend_from_slice(body.as_slice());
+        }
+    }
 }
 
 /// Checks if the response will have a body.
@@ -117,4 +124,20 @@ fn check_response(status: &str, method: &Method) -> bool {
     let status = !matches!(status, "304" | "204");
 
     method && status
+}
+
+/// Inserts content length header conditionally
+fn insert_content_length(
+    headers: &mut HashMap<String, String>, 
+    serialize_body: bool,
+    body: Option<&Vec<u8>>,
+) {
+    if let Some(body) = body {
+        if serialize_body {
+            headers.insert(
+                "Content-Length".to_string(), 
+                body.len().to_string()
+            );
+        }
+    } 
 }
