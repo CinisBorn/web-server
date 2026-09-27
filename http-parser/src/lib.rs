@@ -7,11 +7,11 @@ use std::io::ErrorKind::Interrupted;
 use std::io::{Read, Write};
 
 use error::ParserErr;
-use helpers::{map_method, find_line};
-use request::{Method, Request, RequestLine, HttpVersion};
+use helpers::{find_line, map_method};
+use request::{HttpVersion, Method, Request, RequestLine};
 
-mod helpers;
 pub mod error;
+mod helpers;
 pub mod request;
 pub mod response;
 
@@ -20,9 +20,9 @@ pub mod response;
 /// # Errors
 ///
 /// Returns a [`ParserErr`] if it's not possible to parse the request.
-pub fn parse_req<T>(src: &mut T, content: &mut [u8]) -> Result<Request, ParserErr> 
+pub fn parse_req<T>(src: &mut T, content: &mut [u8]) -> Result<Request, ParserErr>
 where
-  T: Read + Write  
+    T: Read + Write,
 {
     read_src(src, content)?;
     let mut cursor = 0;
@@ -30,18 +30,12 @@ where
     let start_line = parse_req_line(src, content, &mut cursor)?;
 
     if let HttpVersion::Unsupported(version) = start_line.version() {
-        return Err(ParserErr::UnsupportedHttpVersion(version.to_owned()))
+        return Err(ParserErr::UnsupportedHttpVersion(version.to_owned()));
     }
-    
-    let headers = parse_headers(src, content, &mut cursor)?;
-    let body = match read_body(src, content, &mut cursor, &headers) {
-        Ok(body) => body,
-        Err(err) => match err {
-            ParserErr::Ignored => String::new(),
-            _ => return Err(err),
-        },
-    };
 
+    let headers = parse_headers(src, content, &mut cursor)?;
+    let body = read_body(src, content, &mut cursor, headers.as_ref())?;
+ 
     Ok(Request::new(start_line, headers, body))
 }
 
@@ -74,7 +68,7 @@ fn parse_headers<T>(
     src: &mut T,
     content: &mut [u8],
     cursor: &mut usize,
-) -> Result<HashMap<String, String>, ParserErr>
+) -> Result<Option<HashMap<String, String>>, ParserErr>
 where
     T: Read + Write,
 {
@@ -85,7 +79,11 @@ where
             *cursor += line.len() + 2;
 
             if line.is_empty() {
-                break Ok(headers);
+                if headers.is_empty() { 
+                    break Ok(None) 
+                } else { 
+                    break Ok(Some(headers))
+                }
             }
 
             let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
@@ -129,8 +127,8 @@ where
 
     let mut items = line.split(|byte| *byte == b' ');
 
-    let method  = items.next().ok_or(ParserErr::InvalidInput)?;
-    let target  = items.next().ok_or(ParserErr::InvalidInput)?;
+    let method = items.next().ok_or(ParserErr::InvalidInput)?;
+    let target = items.next().ok_or(ParserErr::InvalidInput)?;
     let version = items.next().ok_or(ParserErr::InvalidInput)?;
 
     let Ok(method) = std::str::from_utf8(method) else {
@@ -147,7 +145,7 @@ where
 
     let method = map_method(method)?;
     let version = HttpVersion::map(version);
-    
+
     let req_start_line = RequestLine::new(version, method, target.to_owned());
 
     Ok(req_start_line)
@@ -157,13 +155,16 @@ fn read_body<T>(
     src: &mut T,
     content: &mut [u8],
     cursor: &mut usize,
-    headers: &HashMap<String, String>,
-) -> Result<String, ParserErr>
+    headers: Option<&HashMap<String, String>>,
+) -> Result<Option<String>, ParserErr>
 where
     T: Read + Write,
 {
+    let Some(headers) = headers else {
+        return Ok(None)
+    };
     let Some(content_length) = headers.get("Content-length") else {
-        return Err(ParserErr::Ignored);
+        return Ok(None);
     };
 
     let Ok(content_length) = content_length.parse::<usize>() else {
@@ -178,12 +179,13 @@ where
     body[..from_buffer].copy_from_slice(&available_data[..from_buffer]);
 
     if remaining > 0 {
-        src.read_exact(&mut body[from_buffer..]).map_err(ParserErr::Io)?;
+        src.read_exact(&mut body[from_buffer..])
+            .map_err(ParserErr::Io)?;
     }
 
     let Ok(body_txt) = String::from_utf8(body) else {
         return Err(ParserErr::InvalidInput);
     };
 
-    Ok(body_txt)
+    Ok(Some(body_txt))
 }

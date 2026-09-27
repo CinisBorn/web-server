@@ -45,14 +45,6 @@ impl HttpVersion {
     }
 }
 
-/// Represents the client request.
-#[derive(Debug)]
-pub struct Request {
-    start_line: RequestLine,
-    headers: HashMap<String, String>,
-    body: String,
-}
-
 #[derive(Debug)]
 /// The request start line. See more at
 /// [RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html#name-message)
@@ -86,13 +78,21 @@ impl RequestLine {
     }
 }
 
+/// Represents the client request.
+#[derive(Debug)]
+pub struct Request {
+    start_line: RequestLine,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+}
+
 impl Request
  {
     /// Creates a new structured client `Request`.
     pub fn new(
         start_line: RequestLine,
-        headers: HashMap<String, String>,
-        body: String,
+        headers: Option<HashMap<String, String>>,
+        body: Option<String>,
     ) -> Self {
         Self {
             start_line,
@@ -107,12 +107,12 @@ impl Request
     }
 
     /// Returns the headers of request
-    pub fn headers(&self) -> &HashMap<String, String> {
-        &self.headers
+    pub fn headers(&self) -> Option<&HashMap<String, String>> {
+        self.headers.as_ref()
     }
 
     /// Returns the body of request.
-    pub fn body(&self) -> &str {
-        &self.body
+    pub fn body(&self) -> Option<&String> {
+        self.body.as_ref()
     }
 }

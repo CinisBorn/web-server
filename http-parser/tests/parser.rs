@@ -37,7 +37,7 @@ fn request_is_parsed_correctly() {
     let mut buf = [0u8; 103];
 
     let req = parse_req(&mut source, &mut buf).unwrap();
-    let headers = req.headers();
+    let headers = req.headers().unwrap();
     let accept = headers.get("Accept");
     let host = headers.get("Host");
 
@@ -64,7 +64,7 @@ fn request_with_body_is_parsed_correctly() {
 
     let req = parse_req(&mut source, &mut buf).unwrap();
 
-    assert_eq!(req.body(), "hello");
+    assert_eq!(req.body().unwrap(), "hello");
 }
 
 #[test]
