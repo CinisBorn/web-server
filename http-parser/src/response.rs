@@ -11,6 +11,8 @@ pub enum CodeStatus {
     Ok,
     /// Represents the HTTP status code: `404`.
     NotFound,
+    /// Represents the HTTP status code: `405`.
+    MethodNotAllowed,
     /// Represents the HTTP status code: `400`.
     BadRequest,
     /// Represents the HTTP status code: `204`.
@@ -25,12 +27,13 @@ impl CodeStatus {
     /// gets the numeric code from phrasal code.
     fn code(&self) -> String {
         match self {
-            CodeStatus::Ok => 200.to_string(),
-            CodeStatus::BadRequest => 400.to_string(),
-            CodeStatus::NotFound => 404.to_string(),
-            CodeStatus::NoContent => 204.to_string(),
-            CodeStatus::NotModified => 304.to_string(),
-            CodeStatus::HttpVersionNotSupported => 505.to_string(),
+            Self::Ok => 200.to_string(),
+            Self::BadRequest => 400.to_string(),
+            Self::NotFound => 404.to_string(),
+            Self::NoContent => 204.to_string(),
+            Self::NotModified => 304.to_string(),
+            Self::HttpVersionNotSupported => 505.to_string(),
+            Self::MethodNotAllowed => 405.to_string()
         }
     }
 }
@@ -63,6 +66,8 @@ impl Response {
         let serialize_body = check_response(&status, method);
 
         insert_content_length(headers, serialize_body, body.as_ref());
+        insert_allow_header(headers, method);
+        
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
         
@@ -140,4 +145,16 @@ fn insert_content_length(
             );
         }
     } 
+}
+
+fn insert_allow_header(
+    headers: &mut HashMap<String, String>, 
+    method: &Method
+) {
+    if let Method::Unsupported = method {
+        headers.insert(
+            "Allow".to_string(), 
+            "GET, HEAD".to_string()
+        );
+    }
 }

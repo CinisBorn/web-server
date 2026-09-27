@@ -35,7 +35,7 @@ where
 
     let headers = parse_headers(src, content, &mut cursor)?;
     let body = read_body(src, content, &mut cursor, headers.as_ref())?;
- 
+
     Ok(Request::new(start_line, headers, body))
 }
 

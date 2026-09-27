@@ -22,6 +22,8 @@ pub enum Method {
     PUT,
     /// The HEAD method.
     HEAD,
+    /// Represents unsupported HTTP methods
+    Unsupported 
 }
 
 /// The available supported HTTP methods. 

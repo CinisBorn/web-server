@@ -60,3 +60,16 @@ fn do_not_include_body() {
 
     assert_eq!(response, expected);
 }
+
+#[test]
+fn show_allowed_methods() {
+    let mut src = mock_source(b"CONNECT / HTTP/1.1\r\n\r\n", CAPACITY);
+    let mut buf = [0u8; 22];
+    let req = parse_req(&mut src, &mut buf).unwrap();
+    let mut res = Response::build(
+        CodeStatus::MethodNotAllowed, 
+        req.body().map(|s| s.as_bytes())
+    );
+    let cnt = res.serialize_to_string(req.start_line().method());
+    assert_eq!(cnt, "HTTP/1.1 405\r\nAllow: GET, HEAD\r\n\r\n");
+}
