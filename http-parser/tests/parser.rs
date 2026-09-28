@@ -1,6 +1,7 @@
 //! It will exhaustively checks for logical error in parsing functions
-use http_parser::{parse_req, request::Method};
+use http_parser::parse_req;
 use http_parser::error::ParserErr;
+use http_parser::types::Method;
 
 use std::io::{Cursor, Write};
 

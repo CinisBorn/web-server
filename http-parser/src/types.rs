@@ -1,0 +1,36 @@
+//! Common HTTP types used across the crate. 
+
+/// The HTTP method of `Request`.
+#[derive(Debug, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum Method {
+    /// The GET method.
+    GET,
+    /// The POST method.
+    POST,
+    /// The DELETE method.
+    DELETE,
+    /// The PATCH method.
+    PATCH,
+    /// The CONNECT method.
+    CONNECT,
+    /// The OPTIONS method.
+    OPTIONS,
+    /// The PUT method.
+    PUT,
+    /// The HEAD method.
+    HEAD,
+    /// Represents unsupported HTTP methods
+    Unsupported 
+}
+
+impl Method {
+    /// Maps the method
+    pub fn map_method(method: &str) -> Method {
+        match method {
+            "GET" => Method::GET,
+            "HEAD" => Method::HEAD,
+            _ => Method::Unsupported,
+        }
+    }
+}

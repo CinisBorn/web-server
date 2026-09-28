@@ -1,6 +1,7 @@
 //! Tests related to response parsing.
 
-use http_parser::request::{Method, Request};
+use http_parser::request::Request;
+use http_parser::types::Method;
 use http_parser::{
     parse_req,
     response::{CodeStatus, Response},

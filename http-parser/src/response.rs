@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::request::Method;
+use crate::types::Method;
 
 /// The response code status.
 #[derive(Debug)]
