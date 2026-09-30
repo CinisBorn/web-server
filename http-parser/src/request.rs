@@ -99,34 +99,9 @@ impl Request
     }
 }
 
-use std::io::{Read, Write};
-use std::io::ErrorKind::Interrupted;
+use std::io::{BufReader, Read, Write};
 
 use crate::error::ParserErr;
-/// Attempts to read bytes from a stream.
-///
-/// Returns `Ok(&[n])` if one or more bytes are successfully read.
-///
-/// # Errors
-///
-/// Returns [`ParserErr::ConnClosed`] if the client closes the connection.
-///
-/// Returns [`ParserErr::Io(n)`] if any other I/O error occurs.
-///
-/// It will retry if an [`ErrorKind::Interrupted`] occurs.
-pub(crate) fn read_src<T>(src: &mut T, buf: &mut [u8]) -> Result<usize, ParserErr>
-where
-    T: Read + Write,
-{
-    loop {
-        match src.read(buf) {
-            Ok(0) => return Err(ParserErr::ConnClosed),
-            Ok(n) => return Ok(n),
-            Err(e) if e.kind() == Interrupted => {}
-            Err(e) => return Err(ParserErr::Io(e)),
-        }
-    }
-}
 
 use header_section::parse_headers;
 use header_section::parse_req_line;
@@ -137,21 +112,20 @@ use body::read_body;
 /// # Errors
 ///
 /// Returns a [`ParserErr`] if it's not possible to parse the request.
-pub fn parse_req<T>(src: &mut T, content: &mut [u8]) -> Result<Request, ParserErr>
+pub fn parse_req<T>(src: &mut T) -> Result<Request, ParserErr>
 where
     T: Read + Write,
 {
-    read_src(src, content)?;
-    let mut cursor = 0;
-
-    let start_line = parse_req_line(src, content, &mut cursor)?;
+    let mut reader = BufReader::new(src);
+    
+    let start_line = parse_req_line(&mut reader)?;
 
     if let HttpVersion::Unsupported(version) = start_line.version() {
         return Err(ParserErr::UnsupportedHttpVersion(version.to_owned()));
     }
 
-    let headers = parse_headers(src, content, &mut cursor)?;
-    let body = read_body(src, content, &mut cursor, headers.as_ref())?;
+    let headers = parse_headers(&mut reader)?;
+    let body = read_body(&mut reader,headers.as_ref())?;
 
     Ok(Request::new(start_line, headers, body))
 }

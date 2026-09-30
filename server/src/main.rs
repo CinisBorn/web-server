@@ -11,8 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let mut stream = conn.connect()?;
-        let mut buf = [0u8; 8192];
-        let req = http_parser::parse_req(stream.stream_mut(), &mut buf).unwrap();
+        let req = http_parser::parse_req(stream.stream_mut()).unwrap();
 
         let mut response = Response::build(
             CodeStatus::Ok, 

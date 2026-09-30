@@ -1,17 +1,12 @@
 //! Tools for body parsing.
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 
 use crate::error::ParserErr;
 
 
-pub(crate) fn read_body<T>(
-    src: &mut T,
-    content: &mut [u8],
-    cursor: &mut usize,
-    headers: Option<&HashMap<String, String>>,
-) -> Result<Option<String>, ParserErr>
+pub(crate) fn read_body<T>(src: &mut BufReader<T>, headers: Option<&HashMap<String, String>>) -> Result<Option<String>, ParserErr>
 where
     T: Read + Write,
 {
@@ -23,10 +18,10 @@ where
     };
 
     let Ok(content_length) = content_length.parse::<usize>() else {
-        return Err(ParserErr::InvalidInput);
+        return Err(ParserErr::InvalidInput(content_length.to_owned()));
     };
 
-    let available_data = &mut content[*cursor..];
+    let available_data = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
     let from_buffer = available_data.len().min(content_length);
     let remaining = content_length - from_buffer;
     let mut body = vec![0u8; content_length];
@@ -38,8 +33,10 @@ where
             .map_err(ParserErr::Io)?;
     }
 
+    src.consume(body.len());
+    
     let Ok(body_txt) = String::from_utf8(body) else {
-        return Err(ParserErr::InvalidInput);
+        return Err(ParserErr::InvalidInput(String::from("No Valid Input")));
     };
 
     Ok(Some(body_txt))

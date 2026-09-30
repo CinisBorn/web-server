@@ -16,7 +16,7 @@ pub enum ParserErr {
     /// It's very common costumized methods or fields in HTTP requests because HTTP is extensible by design.
     UnknownMethod(String),
     /// Unexpected input was found. 
-    InvalidInput,
+    InvalidInput(String),
     /// The parsing process was ignored. 
     /// 
     /// The main purpose of this variant is to signal a process was skipped. 
@@ -32,7 +32,7 @@ impl std::fmt::Display for ParserErr {
             ParserErr::UnknownMethod(m) => write!(f, "{m}"),
             ParserErr::ConnClosed => write!(f, "Connection was closed"),
             ParserErr::Io(m) => write!(f, "{m}"),
-            ParserErr::InvalidInput => write!(f, "Unexpected input"),
+            ParserErr::InvalidInput(s) => write!(f, "Unexpected input: {s}"),
             ParserErr::Ignored => write!(f, ""),
             Self::UnsupportedHttpVersion(version) => write!(f, "{version}")
         }

@@ -1,27 +1,25 @@
 //! Contains function for parsing headers and request line sections. 
 
 use std::collections::HashMap;
-use std::io::{Write, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 
 use crate::error::ParserErr;
 use crate::helpers::find_line;
 use crate::request::{RequestLine, HttpVersion};
-use crate::request::read_src;
 use crate::types::Method;
 
-pub(crate) fn parse_headers<T>(
-    src: &mut T,
-    content: &mut [u8],
-    cursor: &mut usize,
-) -> Result<Option<HashMap<String, String>>, ParserErr>
+pub(crate) fn parse_headers<T>(src: &mut BufReader<T>) -> Result<Option<HashMap<String, String>>, ParserErr>
 where
     T: Read + Write,
 {
     let mut headers = HashMap::new();
 
     loop {
-        if let Some(line) = find_line(&content[*cursor..]) {
-            *cursor += line.len() + 2;
+        let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
+        
+        if let Some(line) = find_line(buf) {
+            let line = line.to_vec();
+            src.consume(line.len() + 2);
 
             if line.is_empty() {
                 if headers.is_empty() { 
@@ -32,66 +30,123 @@ where
             }
 
             let Some(colon_position) = line.iter().position(|byte| *byte == b':') else {
-                return Err(ParserErr::InvalidInput);
+                return Err(ParserErr::InvalidInput(String::from("No Colon Found")));
             };
 
             let field = &line[..colon_position];
             let value = &line[colon_position + 2..];
 
             let Ok(field) = std::str::from_utf8(field) else {
-                return Err(ParserErr::InvalidInput);
+                return Err(
+                    ParserErr::InvalidInput(
+                        String::from_utf8(field.to_vec()).unwrap()
+                    )
+                );
             };
 
             let Ok(value) = std::str::from_utf8(value) else {
-                return Err(ParserErr::InvalidInput);
+                return Err(
+                    ParserErr::InvalidInput(
+                        String::from_utf8(value.to_vec()).unwrap()
+                    )
+                );
             };
 
             headers.insert(field.to_owned(), value.to_owned());
-        } else {
-            read_src(src, content)?;
+        } 
+    }
+}
+
+pub(crate) fn parse_req_line<T>(src: &mut BufReader<T>) -> Result<RequestLine, ParserErr>
+where
+    T: Read + Write,
+{
+    loop {
+        let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
+
+        if let Some(line) = find_line(buf) {
+            let line = line.to_vec();
+            src.consume(line.len() + 2);
+
+            let mut items = line.split(|byte| *byte == b' ');
+        
+            let method = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
+            let target = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
+            let version = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
+
+            let Ok(method) = std::str::from_utf8(method) else {
+                return Err(ParserErr::InvalidInput(String::from_utf8(method.to_vec()).unwrap()));
+            };
+
+            let Ok(target) = std::str::from_utf8(target) else {
+                return Err(ParserErr::InvalidInput(String::from_utf8(target.to_vec()).unwrap()));
+            };
+
+            let Ok(version) = std::str::from_utf8(version) else {
+                return Err(ParserErr::InvalidInput(String::from_utf8(version.to_vec()).unwrap()));
+            };
+
+            let met = Method::map_method(method);
+            let ver = HttpVersion::map(version);
+
+            let req_start_line = RequestLine::new(ver, met, target.to_owned());
+            
+            break Ok(req_start_line);
         }
     }
 }
 
-pub(crate) fn parse_req_line<T>(
-    src: &mut T,
-    content: &mut [u8],
-    cursor: &mut usize,
-) -> Result<RequestLine, ParserErr>
-where
-    T: Read + Write,
-{
-    let line = loop {
-        if let Some(line) = find_line(&content[*cursor..]) {
-            *cursor += line.len() + 2;
-            break line;
-        }
+use std::io::Cursor;
 
-        read_src(src, content)?;
-    };
+#[allow(dead_code)] // clippy issues 
+fn mock_reader(inner: &[u8]) -> BufReader<Cursor<Vec<u8>>> {
+    let mut src = Cursor::new(inner.to_vec());
+    src.set_position(0);
+    
+    BufReader::new(src)
+}
 
-    let mut items = line.split(|byte| *byte == b' ');
+#[cfg(test)]
+mod request_line {
+    use super::*;
 
-    let method = items.next().ok_or(ParserErr::InvalidInput)?;
-    let target = items.next().ok_or(ParserErr::InvalidInput)?;
-    let version = items.next().ok_or(ParserErr::InvalidInput)?;
+    #[test]
+    fn parse_request_line() {
+        let mut src = mock_reader(b"GET / HTTP/1.1\r\n\r\n");
+        parse_req_line(&mut src).unwrap();
+    }
 
-    let Ok(method) = std::str::from_utf8(method) else {
-        return Err(ParserErr::InvalidInput);
-    };
+    // TODO: Implement Clone trait for Method and HttpVersion enums for better testing
+    #[test]
+    fn parsed_content_is_correct() {
+        let mut src = mock_reader(b"GET / HTTP/1.1\r\n\r\n");
+        let res = parse_req_line(&mut src).unwrap();
+        
+        assert_eq!(res.target, "/");
+    }
+}
 
-    let Ok(target) = std::str::from_utf8(target) else {
-        return Err(ParserErr::InvalidInput);
-    };
+#[cfg(test)]
+mod headers_parsing {
+    use super::*;
 
-    let Ok(version) = std::str::from_utf8(version) else {
-        return Err(ParserErr::InvalidInput);
-    };
+    #[test]
+    fn header_is_parsed() {
+        let mut src = mock_reader(
+            b"Host: 127.0.0.1\r\n\
+            \r\n"
+        );
+        
+        parse_headers(&mut src).unwrap();
+    }
 
-    let met = Method::map_method(method);
-    let ver = HttpVersion::map(version);
-
-    let req_start_line = RequestLine::new(ver, met, target.to_owned());
-
-    Ok(req_start_line)
+    #[test]
+    fn header_content_is_correct() {
+        let mut src = mock_reader(
+            b"Host: 127.0.0.1\r\n\
+            \r\n"
+        );
+        let res = parse_headers(&mut src).unwrap().unwrap();
+        assert_eq!(res.get("Host").unwrap(), "127.0.0.1");
+    }
 }
