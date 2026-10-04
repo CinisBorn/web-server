@@ -89,6 +89,10 @@ where
             let met = Method::map_method(method);
             let ver = HttpVersion::map(version);
 
+            if let HttpVersion::Unsupported(v) = ver {
+                return Err(ParserErr::UnsupportedHttpVersion(v.to_owned())) 
+            }
+            
             let req_start_line = RequestLine::new(ver, met, target.to_owned());
             
             break Ok(req_start_line);
@@ -123,6 +127,17 @@ mod request_line {
         let res = parse_req_line(&mut src).unwrap();
         
         assert_eq!(res.target, "/");
+    }
+
+    #[test]
+    fn unsupported_http_version_fail() -> Result<(), ()> {
+        let mut src = mock_reader(b"GET / HTTP/2.0\r\n\r\n");
+        let res = parse_req_line(&mut src).err().unwrap();
+
+        match res {
+            ParserErr::UnsupportedHttpVersion(_) => return Ok(()),
+            _ => return Err(())
+        }
     }
 }
 

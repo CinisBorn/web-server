@@ -119,11 +119,6 @@ where
     let mut reader = BufReader::new(src);
     
     let start_line = parse_req_line(&mut reader)?;
-
-    if let HttpVersion::Unsupported(version) = start_line.version() {
-        return Err(ParserErr::UnsupportedHttpVersion(version.to_owned()));
-    }
-
     let headers = parse_headers(&mut reader)?;
     let body = read_body(&mut reader,headers.as_ref())?;
 
