@@ -57,34 +57,29 @@ where
     }
 }
 
-pub(crate) fn parse_req_line<T>(src: &mut BufReader<T>) -> Result<RequestLine, ParserErr>
-where
-    T: Read + Write,
-{
+pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestLine, ParserErr> {
     loop {
         let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
 
         if let Some(line) = find_line(buf) {
-            let line = line.to_vec();
+            let line = line.to_owned();
+            
             src.consume(line.len() + 2);
 
-            let mut items = line.split(|byte| *byte == b' ');
-        
-            let method = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
-            let target = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
-            let version = items.next().ok_or(ParserErr::InvalidInput(String::from("No Next Item Found")))?;
+            let mut items = line.split(|byte| *byte == b' ')    ;
+    
+            let met = items.next().ok_or(ParserErr::InvalidInput("Method not found".into()))?;
+            let tar = items.next().ok_or(ParserErr::InvalidInput("Target not Found".into()))?;
+            let ver = items.next().ok_or(ParserErr::InvalidInput("Version not Found".into()))?;
 
-            let Ok(method) = std::str::from_utf8(method) else {
-                return Err(ParserErr::InvalidInput(String::from_utf8(method.to_vec()).unwrap()));
-            };
+            let method = std::str::from_utf8(met)
+                .map_err(|_| ParserErr::InvalidInput("Invalid HTTP method encoding".into()))?;
 
-            let Ok(target) = std::str::from_utf8(target) else {
-                return Err(ParserErr::InvalidInput(String::from_utf8(target.to_vec()).unwrap()));
-            };
-
-            let Ok(version) = std::str::from_utf8(version) else {
-                return Err(ParserErr::InvalidInput(String::from_utf8(version.to_vec()).unwrap()));
-            };
+            let target = std::str::from_utf8(tar)
+                .map_err(|_| ParserErr::InvalidInput("Invalid target encoding".into()))?;
+            
+            let version = std::str::from_utf8(ver)
+                .map_err(|_| ParserErr::InvalidInput("Invalid HTTP version encoding".into()))?;
 
             let met = Method::map_method(method);
             let ver = HttpVersion::map(version);
