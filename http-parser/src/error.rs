@@ -22,7 +22,9 @@ pub enum ParserErr {
     /// The main purpose of this variant is to signal a process was skipped. 
     Ignored,
     /// The client made a request with an unsupported HTTP version. 
-    UnsupportedHttpVersion(String)
+    UnsupportedHttpVersion(String),
+    /// The request contains more items than expected.
+    TooManyItems
 }
 
 impl std::error::Error for ParserErr {}
@@ -34,7 +36,8 @@ impl std::fmt::Display for ParserErr {
             ParserErr::Io(m) => write!(f, "{m}"),
             ParserErr::InvalidInput(s) => write!(f, "Unexpected input: {s}"),
             ParserErr::Ignored => write!(f, ""),
-            Self::UnsupportedHttpVersion(version) => write!(f, "{version}")
+            Self::UnsupportedHttpVersion(version) => write!(f, "{version}"),
+            Self::TooManyItems => write!(f, "The request contains more items than expected")
         }
     }
 }

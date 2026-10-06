@@ -65,11 +65,15 @@ pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestL
             let line = buf[..pos].to_owned();
             src.consume(pos + 2);
 
-            let mut items = line.split(|byte| *byte == b' ')    ;
+            let mut items = line.split(|byte| *byte == b' ');
     
             let met = items.next().ok_or(ParserErr::InvalidInput("Method not found".into()))?;
             let tar = items.next().ok_or(ParserErr::InvalidInput("Target not Found".into()))?;
             let ver = items.next().ok_or(ParserErr::InvalidInput("Version not Found".into()))?;
+
+            if items.next().is_some() {
+                return Err(ParserErr::TooManyItems)
+            }
 
             let method = std::str::from_utf8(met)
                 .map_err(|_| ParserErr::InvalidInput("Invalid HTTP method encoding".into()))?;
@@ -131,6 +135,28 @@ mod request_line {
         match res {
             ParserErr::UnsupportedHttpVersion(_) => return Ok(()),
             _ => return Err(())
+        }
+    }
+
+    #[test]
+    fn invalid_input_fail() -> Result<(), ()> {
+        let mut src = mock_reader(b"GET HTTP/2.0\r\n\r\n");
+        let res = parse_req_line(&mut src).err().unwrap();
+
+        match res {
+            ParserErr::InvalidInput(_) => Ok(()),
+            _ => Err(())
+        }
+    }
+
+    #[test]
+    fn too_many_items_fail() -> Result<(), ()> {
+        let mut src = mock_reader(b"GET / HTTP/2.0 abc\r\n\r\n");
+        let res = parse_req_line(&mut src).err().unwrap();
+
+        match res {
+            ParserErr::TooManyItems => Ok(()),
+            _ => Err(())
         }
     }
 }
