@@ -118,11 +118,20 @@ mod request_line {
         parse_req_line(&mut src).unwrap();
     }
 
-    // TODO: Implement Clone trait for Method and HttpVersion enums for better testing
     #[test]
     fn parsed_content_is_correct() {
         let mut src = mock_reader(b"GET / HTTP/1.1\r\n\r\n");
         let res = parse_req_line(&mut src).unwrap();
+
+        match res.method() {
+            Method::GET => assert!(true),
+            _ => assert!(false)
+        }
+
+        match res.version() {
+            HttpVersion::V1 => assert!(true),
+            _ => assert!(false)
+        }
         
         assert_eq!(res.target, "/");
     }
@@ -183,5 +192,27 @@ mod headers_parsing {
         );
         let res = parse_headers(&mut src).unwrap().unwrap();
         assert_eq!(res.get("Host").unwrap(), "127.0.0.1");
+    }
+
+    #[test]
+    fn request_without_headers_pass() -> Result<(), ()> {
+        let mut src = mock_reader(b"\r\n");
+        let res = parse_headers(&mut src).unwrap();
+     
+        match res {
+            Some(_) => Err(()),
+            None => Ok(()),
+        }
+    }
+
+    #[test]
+    fn bad_formatted_headers_fail() -> Result<(), ()> {
+        let mut src = mock_reader(b"host 127.0.0.1\r\n\r\n");
+        let res = parse_headers(&mut src).unwrap_err();
+     
+        match res {
+            ParserErr::InvalidInput(_) => Ok(()),
+            _ => Err(())
+        }
     }
 }
