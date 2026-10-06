@@ -4,22 +4,34 @@
 //! anything else.
 
 use connection::Connection;
-use http_parser::response::{CodeStatus, Response};
+use http_parser::types::Method;
+use http_parser::response;
+use routing::Router;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = Connection::new()?;
-
+    
     loop {
         let mut stream = conn.connect()?;
         let req = http_parser::parse_req(stream.stream_mut()).unwrap();
+        let router = Router::new(req);
 
-        let mut response = Response::build(
-            CodeStatus::Ok, 
-            Some(b"HELLO WORLD FROM SERVER-SIDE")
-        );
-        let method = req.start_line().method();
-        
-        dbg!(&response.serialize(method));
-        stream.send_response(response.serialize(method).as_slice());
+        router.listen("/", "GET", || {
+            let mut res = response::Response::build(
+                response::CodeStatus::Ok, 
+                Some(b"Hello World")
+            );
+
+            stream.send_response(&res.serialize(&Method::GET));
+        });
+
+        router.listen("/", "HEAD", || {
+            let mut res = response::Response::build(
+                response::CodeStatus::Ok, 
+                Some(b"Hello World alternative")
+            );
+
+            stream.send_response(&res.serialize(&Method::HEAD));
+        });
     }
 }

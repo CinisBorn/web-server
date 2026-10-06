@@ -1,7 +1,7 @@
 //! Common HTTP types used across the crate. 
 
 /// The HTTP method of `Request`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Method {
     /// The GET method.

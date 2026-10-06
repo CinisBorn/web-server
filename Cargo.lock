@@ -14,9 +14,17 @@ name = "http-parser"
 version = "0.1.0"
 
 [[package]]
+name = "routing"
+version = "0.1.0"
+dependencies = [
+ "http-parser",
+]
+
+[[package]]
 name = "server"
 version = "0.1.0"
 dependencies = [
  "connection",
  "http-parser",
+ "routing",
 ]
