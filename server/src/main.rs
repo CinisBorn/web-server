@@ -4,8 +4,7 @@
 //! anything else.
 
 use connection::Connection;
-use http_parser::types::Method;
-use http_parser::response;
+use http_parser::response::{CodeStatus, Response};
 use routing::Router;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,24 +13,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let mut stream = conn.connect()?;
         let req = http_parser::parse_req(stream.stream_mut()).unwrap();
-        let router = Router::new(req);
+        let mut router = Router::new();
 
-        router.listen("/", "GET", || {
-            let mut res = response::Response::build(
-                response::CodeStatus::Ok, 
+        router.register_route("/", "GET", |_| {
+            Response::build(
+                CodeStatus::Ok, 
                 Some(b"Hello World")
-            );
-
-            stream.send_response(&res.serialize(&Method::GET));
+            )
         });
 
-        router.listen("/", "HEAD", || {
-            let mut res = response::Response::build(
-                response::CodeStatus::Ok, 
-                Some(b"Hello World alternative")
-            );
-
-            stream.send_response(&res.serialize(&Method::HEAD));
+        router.register_route("/", "HEAD", |_| {
+            Response::build(
+                CodeStatus::Ok, 
+                Some(b"Hello World Alternative")
+            )
         });
+
+        let mut res = router.match_route(&req);
+
+        stream.send_response(&mut res.serialize(&req.start_line().method()));
     }
 }
