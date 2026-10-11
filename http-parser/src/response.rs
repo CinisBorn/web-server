@@ -67,11 +67,8 @@ impl Response {
 
         insert_content_length(headers, serialize_body, body.as_ref());
 
-        match &self.status {
-            CodeStatus::MethodNotAllowed(methods) => {
-                 insert_allow_header(headers, methods.to_owned());
-            },
-            _ => {}
+        if let CodeStatus::MethodNotAllowed(methods) = &self.status {
+            insert_allow_header(headers, methods.to_owned());
         }
        
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
