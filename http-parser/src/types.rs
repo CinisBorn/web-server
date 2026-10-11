@@ -34,6 +34,7 @@ impl Method {
         }
     }
 
+    /// Converts a [`Method`] into [`&str`]
     pub fn to_str(&self) -> &str {
         match self {
             Method::CONNECT => "CONNECT",

@@ -45,39 +45,22 @@ impl Router {
     pub fn match_route(&self, request: &Request) -> Response {
         'outer: loop {      
             for route in &self.routes {
-                let is_method = route.method == *request.start_line().method();
-                let is_target = route.target == request.start_line().target();
-    
-                if !is_method || is_target {
-                    let possible_routes = self.routes.iter().filter(|e| {
-                        e.target == request.start_line().target()
-                    }).collect::<Vec<&Route>>();
-
-                    for route in possible_routes.iter() {
-                        let is_method = route.method == *request.start_line().method();
-                        let is_target = route.target == request.start_line().target();
-                        
-                        if is_method && is_target {
-                            break 'outer (route.handle)(request);
-                        }
-                    }
-
-                    let allowed_methods = possible_routes.iter()
-                        .map(|e| e.method)
-                        .collect::<Vec<Method>>();
-                    
-                    return Response::build(
-                        CodeStatus::MethodNotAllowed(allowed_methods), 
-                        Some(b"Method Not Allowed")
-                    );
+                let req_target = request.start_line().target();
+ 
+                if is_target_route(route, request) {
+                    break 'outer check_possible_routes(
+                        &self.routes, 
+                        req_target, 
+                        request
+                    )
                 }
                 
-                if is_method && is_target {
+                if is_route(route, request) {
                     return (route.handle)(request);
                 }
             }
     
-            break 'outer Response::build(
+        break Response::build(
                 CodeStatus::NotFound,
                 Some(b"Not Found"),
             )
@@ -85,3 +68,50 @@ impl Router {
     }
 }
 
+/// Checks if the route match testing `route` against a `request`. 
+/// 
+/// The `switch` parameter is used for flow control where I can test:
+/// 
+/// - If both route and method match 
+/// - If route match, but the method not 
+/// 
+/// Set `true` for the first case; Set `false` for the second case.
+fn is_route(route: &Route, request: &Request) -> bool {
+    let is_method = route.method == *request.start_line().method();
+    let is_target = route.target == request.start_line().target();
+    
+    is_method && is_target
+}
+
+fn is_target_route(route: &Route, request: &Request) -> bool {
+    let is_method = route.method == *request.start_line().method();
+    let is_target = route.target == request.start_line().target();
+    
+    !is_method || is_target
+}
+
+fn check_possible_routes(
+    routes: &Vec<Route>, 
+    req_target: &str, 
+    request: &Request
+) -> Response {
+    let possible_routes = routes
+        .iter()
+        .filter(|e| e.target == req_target)
+        .collect::<Vec<&Route>>();
+
+    for route in possible_routes.iter() {
+        if is_route(route, request) {
+            return (route.handle)(request)
+        }
+    }
+
+    let allowed_methods = possible_routes.iter()
+        .map(|e| e.method)
+        .collect::<Vec<Method>>();
+    
+    return Response::build(
+        CodeStatus::MethodNotAllowed(allowed_methods), 
+        Some(b"Method Not Allowed")
+    );
+}
