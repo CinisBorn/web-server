@@ -22,6 +22,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         });
 
+        router.register_route("/a", "GET", |_| {
+            Response::build(
+                CodeStatus::Ok,
+                Some(b"a says: Welcome GET!")
+            )
+        });
+
+        router.register_route("/a", "HEAD", |_| {
+            Response::build(
+                CodeStatus::Ok,
+                Some(b"a says: Welcome HEAD!")
+            )
+        });
+
         router.register_route("/", "HEAD", |_| {
             Response::build(
                 CodeStatus::Ok, 

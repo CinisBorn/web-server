@@ -33,4 +33,18 @@ impl Method {
             _ => Method::Unsupported,
         }
     }
+
+    pub fn to_str(&self) -> &str {
+        match self {
+            Method::CONNECT => "CONNECT",
+            Method::DELETE => "DELETE",
+            Method::GET => "GET",
+            Method::HEAD => "HEAD",
+            Method::OPTIONS => "OPTIONS",
+            Method::PATCH => "PATCH",
+            Method::POST => "POST",
+            Method::PUT => "PUT",
+            Method::Unsupported => "UNSUPPORTED" 
+        }
+    }
 }

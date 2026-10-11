@@ -1,6 +1,6 @@
 //! The HTTP Response
 
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use crate::types::Method;
 
@@ -12,7 +12,7 @@ pub enum CodeStatus {
     /// Represents the HTTP status code: `404`.
     NotFound,
     /// Represents the HTTP status code: `405`.
-    MethodNotAllowed,
+    MethodNotAllowed(Vec<Method>),
     /// Represents the HTTP status code: `400`.
     BadRequest,
     /// Represents the HTTP status code: `204`.
@@ -33,7 +33,7 @@ impl CodeStatus {
             Self::NoContent => 204.to_string(),
             Self::NotModified => 304.to_string(),
             Self::HttpVersionNotSupported => 505.to_string(),
-            Self::MethodNotAllowed => 405.to_string()
+            Self::MethodNotAllowed(_) => 405.to_string()
         }
     }
 }
@@ -66,8 +66,14 @@ impl Response {
         let serialize_body = check_response(&status, method);
 
         insert_content_length(headers, serialize_body, body.as_ref());
-        insert_allow_header(headers, method);
-        
+
+        match &self.status {
+            CodeStatus::MethodNotAllowed(methods) => {
+                 insert_allow_header(headers, methods.to_owned());
+            },
+            _ => {}
+        }
+       
         sereliaze_status_line("HTTP/1.1", &status, &mut response);
         serialize_headers(&mut self.headers, &mut response);
         
@@ -149,12 +155,13 @@ fn insert_content_length(
 
 fn insert_allow_header(
     headers: &mut HashMap<String, String>, 
-    method: &Method
+    methods: Vec<Method>
 ) {
-    if let Method::Unsupported = method {
-        headers.insert(
-            "Allow".to_string(), 
-            "GET, HEAD".to_string()
-        );
+    let mut value = String::new();
+    
+    for method in methods {
+        value.push_str(method.to_str());
     }
+
+    headers.insert("Allow".to_string(), value);
 }

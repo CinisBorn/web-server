@@ -43,19 +43,45 @@ impl Router {
 
     /// Match the request againts a route.
     pub fn match_route(&self, request: &Request) -> Response {
-        for route in &self.routes {
-            let is_method = route.method == *request.start_line().method();
-            let is_target = route.target == request.start_line().target();
-            
-            if is_method && is_target {
-                return (route.handle)(request);
-            }
-        }
+        'outer: loop {      
+            for route in &self.routes {
+                let is_method = route.method == *request.start_line().method();
+                let is_target = route.target == request.start_line().target();
+    
+                if !is_method || is_target {
+                    let possible_routes = self.routes.iter().filter(|e| {
+                        e.target == request.start_line().target()
+                    }).collect::<Vec<&Route>>();
 
-        Response::build(
-            CodeStatus::NotFound,
-            Some(b"Not Found"),
-        )
+                    for route in possible_routes.iter() {
+                        let is_method = route.method == *request.start_line().method();
+                        let is_target = route.target == request.start_line().target();
+                        
+                        if is_method && is_target {
+                            break 'outer (route.handle)(request);
+                        }
+                    }
+
+                    let allowed_methods = possible_routes.iter()
+                        .map(|e| e.method)
+                        .collect::<Vec<Method>>();
+                    
+                    return Response::build(
+                        CodeStatus::MethodNotAllowed(allowed_methods), 
+                        Some(b"Method Not Allowed")
+                    );
+                }
+                
+                if is_method && is_target {
+                    return (route.handle)(request);
+                }
+            }
+    
+            break 'outer Response::build(
+                CodeStatus::NotFound,
+                Some(b"Not Found"),
+            )
+        }
     }
 }
 
