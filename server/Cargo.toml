@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 connection = { path = "../connection"}
-http-parser = { path = "../http-parser"}
+http-parser = { path = "../parser"}
 routing = { path = "../routing"}
 
 [lints]

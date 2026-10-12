@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["http-parser","connection", "server", "routing"]
+members = ["parser","connection", "server", "routing"]
 
 [workspace.lints.rust]
 missing_debug_implementations = "warn"
