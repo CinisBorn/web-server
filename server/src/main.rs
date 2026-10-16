@@ -4,7 +4,8 @@
 //! anything else.
 
 use connection::Connection;
-use http_parser::response::{CodeStatus, Response};
+use http_core::response::{StatusCode, Response, ResponseData};
+use http_parser::response::SerializeResponse;
 use routing::Router;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,31 +17,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut router = Router::new();
 
         router.register_route("/", "GET", |_| {
-            Response::build(
-                CodeStatus::Ok, 
-                Some(b"Hello World")
-            )
+            let mut response = Response::new();
+
+            response.set_status(StatusCode::Ok);
+            response.set_body(Some(b"a says: Welcome"));
+
+            response
         });
 
         router.register_route("/a", "GET", |_| {
-            Response::build(
-                CodeStatus::Ok,
-                Some(b"a says: Welcome GET!")
-            )
+            let mut response = Response::new();
+
+            response.set_status(StatusCode::Ok);
+            response.set_body(Some(b"b says: Welcome"));
+            
+            response
         });
 
         router.register_route("/a", "HEAD", |_| {
-            Response::build(
-                CodeStatus::Ok,
-                Some(b"a says: Welcome HEAD!")
-            )
+            let mut response = Response::new();
+
+            response.set_status(StatusCode::Ok);
+            response.set_body(Some(b"a says: Welcome HEAD"));
+            
+            response
         });
 
         router.register_route("/", "HEAD", |_| {
-            Response::build(
-                CodeStatus::Ok, 
-                Some(b"Hello World Alternative")
-            )
+            let mut response = Response::new();
+
+            response.set_status(StatusCode::Ok);
+            response.set_body(Some(b"/ says: Welcome HEAD"));
+            
+            response
         });
 
         let mut res = router.match_route(&req);

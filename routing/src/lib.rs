@@ -1,6 +1,8 @@
 //! Provides a simple mechanism of routing
-use http_parser::{request::{Request}, types::Method};
-use http_parser::response::{Response, CodeStatus};
+
+use http_core::request::Request;
+use http_core::response::{StatusCode, Response, ResponseData};
+use http_core::Method;
 
 /// Represents a target route
 #[allow(missing_debug_implementations)]
@@ -59,11 +61,13 @@ impl Router {
                     return (route.handle)(request);
                 }
             }
-    
-        break Response::build(
-                CodeStatus::NotFound,
-                Some(b"Not Found"),
-            )
+
+            let mut response = Response::new();
+
+            response.set_status(StatusCode::NotFound);
+            response.set_body(Some(b"Not Found"));
+            
+            break response
         }
     }
 }
@@ -109,9 +113,11 @@ fn check_possible_routes(
     let allowed_methods = possible_routes.iter()
         .map(|e| e.method)
         .collect::<Vec<Method>>();
-    
-    return Response::build(
-        CodeStatus::MethodNotAllowed(allowed_methods), 
-        Some(b"Method Not Allowed")
-    );
+
+    let mut response = Response::new();
+
+    response.set_status(StatusCode::MethodNotAllowed(allowed_methods));
+    response.set_body(Some(b"Method Not Allowed"));
+
+    return response;
 }

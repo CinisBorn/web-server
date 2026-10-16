@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 http-parser = { path="../parser"}
-
+http-core = {path="../http-core"}
 
 [lints]
 workspace = true

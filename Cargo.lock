@@ -7,13 +7,21 @@ name = "connection"
 version = "0.1.0"
 
 [[package]]
+name = "http-core"
+version = "0.1.0"
+
+[[package]]
 name = "http-parser"
 version = "0.1.0"
+dependencies = [
+ "http-core",
+]
 
 [[package]]
 name = "routing"
 version = "0.1.0"
 dependencies = [
+ "http-core",
  "http-parser",
 ]
 
@@ -22,6 +30,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "connection",
+ "http-core",
  "http-parser",
  "routing",
 ]

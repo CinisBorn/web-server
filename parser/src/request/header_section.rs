@@ -3,10 +3,11 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 
+use http_core::request::{RequestLine, HttpVersion};
+use http_core::Method;
+
 use crate::error::ParserErr;
 use crate::helpers::find_line;
-use crate::request::{RequestLine, HttpVersion};
-use crate::types::Method;
 
 pub(crate) fn parse_headers<T>(src: &mut BufReader<T>) -> Result<Option<HashMap<String, String>>, ParserErr>
 where
@@ -133,7 +134,7 @@ mod request_line {
             _ => assert!(false)
         }
         
-        assert_eq!(res.target, "/");
+        assert_eq!(res.target(), "/");
     }
 
     #[test]
