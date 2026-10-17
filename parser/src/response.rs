@@ -16,13 +16,18 @@ pub trait SerializeResponse: ResponseData {
         let body         = self.get_body().cloned();
         let status       = self.get_status().to_owned();
         let mut headers  = HashMap::new();
-        
+
         let status_line = sereliaze_status_line("HTTP/1.1", &status.code());
         let serialize_body = check_response(&status.code(), method);
-        
+
         let body = insert_body(body.as_ref(), serialize_body);
-       
-        insert_content_length(&mut headers, serialize_body, Some(&body));
+        let content_length = body.len() - 2;
+        
+        insert_content_length(
+            &mut headers, 
+            serialize_body, 
+            content_length
+        );
     
         if let StatusCode::MethodNotAllowed(methods) = status {
             insert_allow_header(&mut headers, methods.to_owned());
@@ -75,12 +80,15 @@ fn serialize_headers(
         response.extend_from_slice(b"\r\n");
     }
 
-    for (key, value) in response_headers {
-        response.extend_from_slice(key.as_bytes());
-        response.extend_from_slice(b": ");
-        response.extend_from_slice(value.as_bytes());
-        response.extend_from_slice(b"\r\n");
+    if !response_headers.is_empty() {    
+        for (key, value) in response_headers {
+            response.extend_from_slice(key.as_bytes());
+            response.extend_from_slice(b": ");
+            response.extend_from_slice(value.as_bytes());
+            response.extend_from_slice(b"\r\n");
+        }
     }
+    
     
     response
 }
@@ -111,16 +119,16 @@ fn check_response(status: &str, method: &Method) -> bool {
 fn insert_content_length(
     headers: &mut HashMap<String, String>, 
     serialize_body: bool,
-    body: Option<&Vec<u8>>,
+    content_length: usize,
 ) {
-    if let Some(body) = body {
-        if serialize_body {
-            headers.insert(
-                "Content-Length".to_string(), 
-                body.len().to_string()
-            );
-        }
-    } 
+    
+    if serialize_body {
+        headers.insert(
+            "Content-Length".to_string(), 
+            content_length.to_string()
+        );
+    }
+    
 }
 
 fn insert_allow_header(
