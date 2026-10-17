@@ -6,7 +6,10 @@ use std::io::{BufRead, BufReader, Read, Write};
 use crate::error::ParserErr;
 
 
-pub(crate) fn read_body<T>(src: &mut BufReader<T>, headers: Option<&HashMap<String, String>>) -> Result<Option<String>, ParserErr>
+pub(crate) fn read_body<T>(
+    src: &mut BufReader<T>, 
+    headers: Option<&HashMap<String, String>>
+) -> Result<Option<String>, ParserErr>
 where
     T: Read + Write,
 {

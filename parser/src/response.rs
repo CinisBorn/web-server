@@ -13,9 +13,9 @@ impl SerializeResponse for Response {}
 pub trait SerializeResponse: ResponseData {
     /// Serializes an HTTP [`Response`]. 
     fn serialize(&mut self , method: &Method) -> Vec<u8> {
-        let body        = self.get_body().cloned();
-        let status      = self.get_status().to_owned();
-        let mut headers = self.get_headers_mut().to_owned();
+        let body         = self.get_body().cloned();
+        let status       = self.get_status().to_owned();
+        let mut headers  = HashMap::new();
         
         let status_line = sereliaze_status_line("HTTP/1.1", &status.code());
         let serialize_body = check_response(&status.code(), method);
@@ -28,7 +28,8 @@ pub trait SerializeResponse: ResponseData {
             insert_allow_header(&mut headers, methods.to_owned());
         }
         
-        let headers = serialize_headers(&mut headers);
+        let response_headers = self.get_headers();
+        let headers = serialize_headers(&mut headers, &response_headers);
         let mut response = Vec::new();
     
         response.extend_from_slice(&status_line);
@@ -51,7 +52,6 @@ pub trait SerializeResponse: ResponseData {
     }
 }
 
-
 fn sereliaze_status_line(version: &str, status: &str) -> Vec<u8> {
     let mut response = Vec::new();
     response.extend_from_slice(version.as_bytes());
@@ -62,7 +62,10 @@ fn sereliaze_status_line(version: &str, status: &str) -> Vec<u8> {
     response
 }
 
-fn serialize_headers(headers: &mut HashMap<String, String>) -> Vec<u8>{
+fn serialize_headers(
+    headers: &mut HashMap<String, String>,
+    response_headers: &HashMap<String, String>
+) -> Vec<u8>{
     let mut response = Vec::new();
     
     for (key, value) in headers {
@@ -72,6 +75,13 @@ fn serialize_headers(headers: &mut HashMap<String, String>) -> Vec<u8>{
         response.extend_from_slice(b"\r\n");
     }
 
+    for (key, value) in response_headers {
+        response.extend_from_slice(key.as_bytes());
+        response.extend_from_slice(b": ");
+        response.extend_from_slice(value.as_bytes());
+        response.extend_from_slice(b"\r\n");
+    }
+    
     response
 }
 

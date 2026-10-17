@@ -80,6 +80,10 @@ impl ResponseData for Response {
     fn get_status(&self) -> &StatusCode {
         &self.status
     }
+
+    fn get_headers(&self) -> &HashMap<String, String> {
+        &self.headers
+    }
 }
 
 /// Defines fundamental data handling behavior to [`Response`]
@@ -132,4 +136,6 @@ pub trait ResponseData {
     fn get_body(&self) -> Option<&Vec<u8>>;
     /// Gets a reference to the [`Response`] status code.
     fn get_status(&self) -> &StatusCode;
+    /// Gets a reference to the [`Response`] headers.
+    fn get_headers(&self) -> &HashMap<String, String>;
 }
