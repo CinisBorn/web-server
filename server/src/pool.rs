@@ -1,12 +1,15 @@
 use std::thread::JoinHandle;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc;
+use std::sync::mpsc::{self, Receiver};
 
 use http_core::response::Response;
 use http_parser::response::SerializeResponse;
 use connection::ConnectionStream;
 use http_parser::parse_req;
 use routing::Router;
+
+type Workers = Vec<JoinHandle<()>>;
+type Taker = Arc<Mutex<Receiver<Message>>>;
 
 /// Protocol commucation among workers
 pub(crate) enum Message {
@@ -18,7 +21,7 @@ pub(crate) enum Message {
 
 /// A thread pool for workers management. 
 pub(crate) struct ThreadPool {
-    workers: Vec<JoinHandle<()>>,
+    workers: Workers,
     sender: mpsc::Sender<Message>
 }
 
@@ -36,47 +39,60 @@ impl ThreadPool {
         
         let (sender, receiver) = mpsc::channel::<Message>();
         let receiver = Arc::new(Mutex::new(receiver));
-        let router = Arc::new(router);
+        let router = router;
         let mut workers = Vec::new();
         
         for _ in 0..size {
             let receiver = Arc::clone(&receiver);
             let router = Arc::clone(&router);
-            
-            let handle = std::thread::spawn(move || loop {
-                let request = receiver.lock().unwrap().recv().unwrap();
 
-                match request {
-                    Message::NewJob(mut stream) => {
-                        let router = router.lock();
-                        
-                        let req = parse_req(stream.stream_mut()).unwrap();
-                        let req_method = req.start_line().method();
-
-                        if let Ok(router) = router {
-                            let mut res = router.match_route(&req);
-                            let mut res = res.serialize(req_method);
-
-                            stream.send_response(&mut res); 
-                        } else {
-                            let mut res = Response::internal_error(Some(b"Internal Server Error"));
-                            stream.send_response(&res.serialize(req_method));
-                        }  
-                    },
-                    Message::Shutdown => break
-                }
-            });
+            let handle = Self::spawn_thread(receiver, router);
 
             workers.push(handle);
         }
 
         Self { workers, sender }
     }
+
+    fn spawn_thread(rx: Taker, router: Arc<Mutex<Router>>) -> JoinHandle<()> {
+        let handle = std::thread::spawn(move || loop {
+            let request = rx
+                .lock()
+                .unwrap()
+                .recv()
+                .unwrap();
+
+            match request {
+                Message::NewJob(mut stream) => {
+                    let router = router.lock();
+                    
+                    let req = parse_req(stream.stream_mut()).unwrap();
+                    let req_method = req.start_line().method();
+
+                    if let Ok(router) = router {
+                        let mut res = router
+                            .match_route(&req)
+                            .serialize(req_method);
+
+                        stream.send_response(&mut res); 
+                    } else {
+                        let res: Option<&[u8]> = Some(b"Internal Server Error");
+                        let res = Response::internal_error(res).serialize(req_method);
+                     
+                        stream.send_response(&res);
+                    }  
+                },
+                Message::Shutdown => break
+            }
+        });
+        
+        handle
+    }
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        let workers: Vec<JoinHandle<()>> = self.workers.drain(..).collect();
+        let workers: Workers = self.workers.drain(..).collect();
 
         for _ in &self.workers {
             self.sender.send(Message::Shutdown).unwrap();
