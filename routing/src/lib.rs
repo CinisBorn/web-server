@@ -4,6 +4,8 @@ use http_core::request::Request;
 use http_core::response::{StatusCode, Response, ResponseData};
 use http_core::Method;
 
+use std::sync::Arc;
+
 /// Represents a target route
 #[allow(missing_debug_implementations)]
 pub struct Route {
@@ -12,7 +14,7 @@ pub struct Route {
     /// The HTTP method.
     pub method: Method,
     /// The handle
-    pub handle: Box<dyn Fn(&Request) -> Response>
+    pub handle: Arc<dyn Fn(&Request) -> Response + Send + Sync + 'static>
 }
 
 /// The Router
@@ -34,12 +36,13 @@ impl Router {
         method: &str, 
         handle: F
     ) where 
-        F: Fn(&Request) -> Response + 'static
+        F: Fn(&Request) -> Response + 'static,
+        F: Send + Sync
     {
         self.routes.push(Route { 
             target: target.to_string(), 
             method: Method::map_method(method), 
-            handle: Box::new(handle)
+            handle: Arc::new(handle)
         });
     }
 

@@ -38,43 +38,57 @@
 
 use http_core::{request::Request, response::Response};
 use routing::Router;
-use http_parser::response::SerializeResponse;
 use connection::Connection;
+
+use std::sync::{Arc, Mutex};
+
+use crate::pool::ThreadPool;
+
+mod pool;
 
 /// The server
 #[allow(missing_debug_implementations)]
 pub struct Server {
-    router: Router
+    router: Arc<Mutex<Router>>
 }
 
 impl Server {
     /// Creates a new instance of [`Server`].
     pub fn new() -> Self {
         Self {
-            router: Router::new()
+            router: Arc::new(Mutex::new(Router::new()))
         }
     }
 
     /// Registers a new `GET` endpoint to the routing. 
     pub fn get<T>(&mut self, uri: &str, handle: T) where 
-        T: Fn(&Request) -> Response + 'static
+        T: Fn(&Request) -> Response + 'static + Sync + Send
     {
-        self.router.register_route(uri, "GET", handle);
+        let mut router = self.router.lock().unwrap();
+        router.register_route(uri, "GET", handle);
     }
 
     /// Register a new `HEAD` endpoint to the router.
     pub fn head<T>(&mut self, target: &str, handle: T) 
     where  
-        T: Fn(&Request) -> Response + 'static
+        T: Fn(&Request) -> Response + 'static + Sync + Send
     {
-        self.router.register_route(target, "HEAD", handle);
+        let mut router = self.router.lock().unwrap();
+        router.register_route(target, "HEAD", handle);
     }
 
     /// Matchs the request against registered routes. 
     /// 
     /// If the caller registers equal routes, the first is found is matched. 
     pub fn match_routes(&self, request: &Request) -> Response {
-        self.router.match_route(request)
+        let router = self.router.lock().unwrap();
+        router.match_route(request)
+    }
+
+    /// Returns a reference to server router. 
+    pub fn router(&self) -> Arc<Mutex<Router>> {
+        let router = Arc::clone(&self.router);
+        router
     }
 }
 
@@ -85,14 +99,12 @@ impl Server {
     /// Otherwise, the server won't match against any route.
     pub fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
         let conn = Connection::new()?;
-
+        let router = self.router();
+        let pool = ThreadPool::new(10, router);
+        
         loop {
-            let mut stream = conn.connect()?;    
-            let req = http_parser::parse_req(stream.stream_mut())?;
-
-            let mut res = self.match_routes(&req);
-    
-            stream.send_response(&mut res.serialize(&req.start_line().method()));
+            let stream = conn.connect()?;    
+            pool.execute(pool::Message::NewJob(stream));
         }
     }
 }
