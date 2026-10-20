@@ -2,7 +2,6 @@ use std::thread::JoinHandle;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 
-use http_core::request;
 use http_core::response::Response;
 use http_parser::response::SerializeResponse;
 use connection::ConnectionStream;
@@ -10,14 +9,16 @@ use http_parser::parse_req;
 use routing::Router;
 
 /// Protocol commucation among workers
-pub enum Message {
+pub(crate) enum Message {
     /// Handle requests
     NewJob(ConnectionStream),
+    /// Shutdown a worker
+    Shutdown,
 }
 
 /// A thread pool for workers management. 
-pub struct ThreadPool {
-    workers: Vec<JoinHandle<ConnectionStream>>,
+pub(crate) struct ThreadPool {
+    workers: Vec<JoinHandle<()>>,
     sender: mpsc::Sender<Message>
 }
 
@@ -44,7 +45,7 @@ impl ThreadPool {
             
             let handle = std::thread::spawn(move || loop {
                 let request = receiver.lock().unwrap().recv().unwrap();
- 
+
                 match request {
                     Message::NewJob(mut stream) => {
                         let router = router.lock();
@@ -62,6 +63,7 @@ impl ThreadPool {
                             stream.send_response(&res.serialize(req_method));
                         }  
                     },
+                    Message::Shutdown => break
                 }
             });
 
@@ -69,5 +71,19 @@ impl ThreadPool {
         }
 
         Self { workers, sender }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        let workers: Vec<JoinHandle<()>> = self.workers.drain(..).collect();
+
+        for _ in &self.workers {
+            self.sender.send(Message::Shutdown).unwrap();
+        }
+        
+        for worker in workers {
+            worker.join().unwrap();
+        }
     }
 }
