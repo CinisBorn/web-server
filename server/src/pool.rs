@@ -2,6 +2,8 @@ use std::thread::JoinHandle;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 
+use http_core::request;
+use http_core::response::Response;
 use http_parser::response::SerializeResponse;
 use connection::ConnectionStream;
 use http_parser::parse_req;
@@ -21,12 +23,12 @@ pub struct ThreadPool {
 
 impl ThreadPool {
     /// Sends a message to an available worker for executing a job.
-    pub fn execute(&self, message: Message) {
+    pub(crate) fn execute(&self, message: Message) {
         self.sender.send(message).unwrap();
     }
 
     /// Creates a new thread pool.
-    pub fn new(size: usize, router: Arc<Mutex<Router>>) -> Self {
+    pub(crate) fn new(size: usize, router: Arc<Mutex<Router>>) -> Self {
         if size <= 0 {
             panic!("It's possible create zero or less threads");
         }
@@ -41,17 +43,24 @@ impl ThreadPool {
             let router = Arc::clone(&router);
             
             let handle = std::thread::spawn(move || loop {
-                let request  = receiver.lock().unwrap().recv().unwrap();
-                
+                let request = receiver.lock().unwrap().recv().unwrap();
+ 
                 match request {
                     Message::NewJob(mut stream) => {
-                        let req = parse_req(stream.stream_mut()).unwrap();
-                        let router = router.lock().unwrap();
-                        let mut res = router.match_route(&req);
+                        let router = router.lock();
                         
-                        stream.send_response(
-                            &mut res.serialize(&req.start_line().method())
-                        );
+                        let req = parse_req(stream.stream_mut()).unwrap();
+                        let req_method = req.start_line().method();
+
+                        if let Ok(router) = router {
+                            let mut res = router.match_route(&req);
+                            let mut res = res.serialize(req_method);
+
+                            stream.send_response(&mut res); 
+                        } else {
+                            let mut res = Response::internal_error(Some(b"Internal Server Error"));
+                            stream.send_response(&res.serialize(req_method));
+                        }  
                     },
                 }
             });

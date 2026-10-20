@@ -20,6 +20,8 @@ pub enum StatusCode {
     NotModified,
     /// Represents the HTTP status code: `505`.
     HttpVersionNotSupported,
+    /// Represents the HTTP status code: `500`.
+    InternalServerError,
 }
 
 impl StatusCode {
@@ -32,7 +34,8 @@ impl StatusCode {
             Self::NoContent => 204.to_string(),
             Self::NotModified => 304.to_string(),
             Self::HttpVersionNotSupported => 505.to_string(),
-            Self::MethodNotAllowed(_) => 405.to_string()
+            Self::MethodNotAllowed(_) => 405.to_string(),
+            Self::InternalServerError => 500.to_string(),
         }
     }
 }
@@ -52,6 +55,15 @@ impl Response {
             status: StatusCode::Ok, // temporary default value
             headers: HashMap::new(),
             body: None,
+        }
+    }
+
+    /// Creates a new [`Response`] with a status code: `500`.
+    pub fn internal_error(body: Option<&[u8]>) -> Self {
+        Self {
+            status: StatusCode::InternalServerError,
+            headers: HashMap::new(),
+            body: body.map(|c| c.to_vec()),
         }
     }
 }
