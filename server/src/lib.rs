@@ -1,6 +1,5 @@
-//! The binary for running the server.
-//!
-//! The server provides tools for server handling, including routing and server configurations.
+//! This module provides HTTP server functionality, including request routing,
+//! connection handling, and server configuration.
 //!
 //! ```no_run
 //! use http_core::response::{
@@ -19,7 +18,7 @@
 //!     response.set_body(Some(b"Everything is OK"));
 //!     response
 //! });
-//!
+//! 
 //! server.head("/test", |_| {
 //!     let mut response = Response::new();
 //!     response.set_status(StatusCode::Ok);
@@ -29,12 +28,22 @@
 //!
 //! server.start();
 //! ```
+//! 
+//! # Routing
 //!
-//! The `server.get` and `server.head` sets a new endpoint to the server router. Once you settled
-//! every necessary route, you starts the server.
+//! Use [Server::get] and [Server::head] to register handlers for GET and
+//! HEAD requests, respectively. Register all required routes before starting
+//! the server.
+//! 
+//! When a client connects, the server accepts the connection, processes the
+//! incoming request, matches it against the registered routes, and generates
+//! an HTTP response.
+//! 
+//! # Configuration
 //!
-//! The server will listen to incoming request, parse it, then generate a new HTTP response for
-//! the client.
+//! The server uses a thread pool to process incoming connections. By default,
+//! it creates 10 worker threads. Use [Server::set_workers] to configure the
+//! number of workers before starting the server.
 
 use connection::Connection;
 use http_core::{request::Request, response::Response};
@@ -121,7 +130,7 @@ impl Server {
         self.workers
     }
 
-    /// Sets the amount of workers will be spawned, overwriting the defaut value (`10`).
+    /// Sets the number of workers, overwriting the defaut value (`10`).
     pub fn set_workers(&mut self, size: usize) {
         self.workers = size;
     }
