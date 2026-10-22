@@ -50,13 +50,16 @@ mod pool;
 #[allow(missing_debug_implementations)]
 pub struct Server {
     router: Arc<Mutex<Router>>,
+    workers: usize
 }
 
+// ROUTING RELATED IMPLEMENTATIONS
 impl Server {
     /// Creates a new instance of [`Server`].
     pub fn new() -> Self {
         Self {
             router: Arc::new(Mutex::new(Router::new())),
+            workers: 10
         }
     }
 
@@ -92,7 +95,7 @@ impl Server {
         router
     }
 }
-
+// GENERAL SERVER RELATED IMPLEMENTATIONS
 impl Server {
     /// Starts the server.
     ///
@@ -100,12 +103,26 @@ impl Server {
     /// Otherwise, the server won't match against any route.
     pub fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
         let conn = Connection::new()?;
-        let router = self.router();
-        let pool = ThreadPool::new(50, router);
+        let pool = ThreadPool::new(self.workers, self.router());
 
         loop {
             let stream = conn.connect()?;
             pool.execute(pool::Message::NewJob(stream));
         }
+    }
+}
+// SERVER'S CONFIGURATIONS RELATED IMPLEMENTATIONS
+impl Server {
+    /// Returns how much workers will be spawned when the server starts. By default 
+    /// `10` workers are spawned.
+    /// 
+    /// You overwrite the default value with [`set_workers`].
+    pub fn workers(&self) -> usize {
+        self.workers
+    }
+
+    /// Sets the amount of workers will be spawned, overwriting the defaut value (`10`).
+    pub fn set_workers(&mut self, size: usize) {
+        self.workers = size;
     }
 }
