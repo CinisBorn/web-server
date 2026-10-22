@@ -6,7 +6,6 @@ use http_core::response::StatusCode;
 use http_core::response::ResponseData;
 use http_core::Method;
 
-
 impl SerializeResponse for Response {}
 
 /// Define the HTTP response serialization behavior.
@@ -40,6 +39,17 @@ pub trait SerializeResponse: ResponseData {
         response.extend_from_slice(&status_line);
         response.extend_from_slice(&headers);
         response.extend_from_slice(&body);
+        
+        response
+    }
+
+    /// Serializes an HTTP response with a status code `503` (Service Unavailable).
+    fn service_unavailable(&self) -> Vec<u8> {
+        let mut response = Vec::new();
+        let status_line = sereliaze_status_line("HTTP/1.1", &self.get_status().code());
+        
+        response.extend_from_slice(&status_line);
+        response.extend_from_slice(b"\r\n");
         
         response
     }

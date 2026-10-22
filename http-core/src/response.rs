@@ -22,6 +22,8 @@ pub enum StatusCode {
     HttpVersionNotSupported,
     /// Represents the HTTP status code: `500`.
     InternalServerError,
+    /// Represents the HTTP status code: `503.
+    ServiceUnavailable
 }
 
 impl StatusCode {
@@ -36,6 +38,7 @@ impl StatusCode {
             Self::HttpVersionNotSupported => 505.to_string(),
             Self::MethodNotAllowed(_) => 405.to_string(),
             Self::InternalServerError => 500.to_string(),
+            Self::ServiceUnavailable => 503.to_string()
         }
     }
 }

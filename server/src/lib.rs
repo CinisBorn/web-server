@@ -40,7 +40,7 @@ use connection::Connection;
 use http_core::{request::Request, response::Response};
 use routing::Router;
 
-use std::{collections::VecDeque, sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}};
 
 use crate::pool::ThreadPool;
 
@@ -101,19 +101,11 @@ impl Server {
     pub fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
         let conn = Connection::new()?;
         let router = self.router();
-        let pool = ThreadPool::new(10, router);
-        let mut queue = VecDeque::with_capacity(50);
+        let pool = ThreadPool::new(50, router);
 
         loop {
             let stream = conn.connect()?;
-
-            if queue.len() < queue.capacity() {
-                queue.push_back(stream);
-            }
-            
-            if let Some(request) = queue.pop_front() {
-                pool.execute(pool::Message::NewJob(request));
-            }
+            pool.execute(pool::Message::NewJob(stream));
         }
     }
 }

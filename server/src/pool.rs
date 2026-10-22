@@ -7,12 +7,12 @@
 //! The pool owns the worker threads and coordinates their shutdown when
 //! it is dropped.
 
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc::{self, Receiver, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use connection::ConnectionStream;
-use http_core::response::Response;
+use http_core::response::{Response, ResponseData};
 use http_parser::parse_req;
 use http_parser::response::SerializeResponse;
 use routing::Router;
@@ -32,7 +32,7 @@ pub(crate) enum Message {
 /// A thread pool for workers management.
 pub(crate) struct ThreadPool {
     workers: Workers,
-    sender: mpsc::Sender<Message>,
+    sender: mpsc::SyncSender<Message>,
 }
 
 impl ThreadPool {
@@ -43,7 +43,26 @@ impl ThreadPool {
     /// Panics if all receivers have been dropped and the message cannot
     /// be sent.
     pub(crate) fn execute(&self, message: Message) {
-        self.sender.send(message).unwrap();
+        use http_core::response::StatusCode::ServiceUnavailable;
+
+        match self.sender.try_send(message) {
+            Ok(_) => {},
+            Err(TrySendError::Full(Message::NewJob(mut stream))) => {
+                let mut response = Response::new();
+                
+                response.set_status(ServiceUnavailable);
+                stream.send_response(&response.service_unavailable());
+            },
+            _ => {
+                /*
+                 * I will not handle it why the "sender" or "receiver" is 
+                 * dropped when the server shutdowns. 
+                 * 
+                 * It's unlike a TrySendError::Disconnected is returned in the 
+                 * current code design. 
+                 */
+            }
+        } 
     }
 
     /// Creates a thread pool with the specified number of workers.
@@ -64,7 +83,7 @@ impl ThreadPool {
             panic!("It's possible create zero or less threads");
         }
 
-        let (sender, receiver) = mpsc::channel::<Message>();
+        let (sender, receiver) = mpsc::sync_channel::<Message>(size);
         let receiver = Arc::new(Mutex::new(receiver));
         let router = router;
         let mut workers = Vec::new();
