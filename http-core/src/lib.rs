@@ -1,7 +1,7 @@
 //! Contains core http types and tools.
 
-pub mod response;
 pub mod request;
+pub mod response;
 
 /// The HTTP method of `Request`.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -24,7 +24,7 @@ pub enum Method {
     /// The HEAD method.
     HEAD,
     /// Represents unsupported HTTP methods
-    Unsupported 
+    Unsupported,
 }
 
 impl Method {
@@ -48,7 +48,7 @@ impl Method {
             Method::PATCH => "PATCH",
             Method::POST => "POST",
             Method::PUT => "PUT",
-            Method::Unsupported => "UNSUPPORTED" 
+            Method::Unsupported => "UNSUPPORTED",
         }
     }
 }

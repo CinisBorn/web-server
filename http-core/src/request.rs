@@ -4,15 +4,15 @@ use std::collections::HashMap;
 
 use crate::Method;
 
-/// The available supported HTTP methods. 
+/// The available supported HTTP methods.
 #[derive(Debug)]
 pub enum HttpVersion {
     /// Represents the HTTP/1.1
-    /// 
+    ///
     /// Older version won't be supported.
-    V1, // aka HTTP/1.1 
-    /// Represents the unsupported http version. 
-    Unsupported(String)
+    V1, // aka HTTP/1.1
+    /// Represents the unsupported http version.
+    Unsupported(String),
 }
 
 impl HttpVersion {
@@ -20,7 +20,7 @@ impl HttpVersion {
     pub fn map(version: &str) -> Self {
         match version {
             "HTTP/1.1" => HttpVersion::V1,
-            v => HttpVersion::Unsupported(v.to_string()) // v = version
+            v => HttpVersion::Unsupported(v.to_string()), // v = version
         }
     }
 }
@@ -39,7 +39,11 @@ pub struct RequestLine {
 impl RequestLine {
     /// Creates a new instance of `RequestLine`.
     pub fn new(version: HttpVersion, method: Method, target: String) -> Self {
-        Self { version, method, target }
+        Self {
+            version,
+            method,
+            target,
+        }
     }
 
     /// Returns the HTTP method.
@@ -66,8 +70,7 @@ pub struct Request {
     body: Option<String>,
 }
 
-impl Request
- {
+impl Request {
     /// Creates a new structured client `Request`.
     pub fn new(
         start_line: RequestLine,

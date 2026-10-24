@@ -1,9 +1,9 @@
-//! Provides tools for HTTP parsing. 
-//! 
-//! This crate depends on *http-core* crate for core types such as 
-//! `Request` and `Response`. If you need more information about theses 
+//! Provides tools for HTTP parsing.
+//!
+//! This crate depends on *http-core* crate for core types such as
+//! `Request` and `Response`. If you need more information about theses
 //! types, refer to the *http-core* crate documentation.
-//! 
+//!
 //! [`parse_req`] is used to parse bytes into useful HTTP `Response` representation.
 //! ```no_run
 //! # use std::io::Cursor;
@@ -15,7 +15,7 @@
 //!    
 //!    src
 //! }
-//! 
+//!
 //! let mut stream = mock_tcp_stream(b"GET / HTTP/1.1");
 //! parse_req(&mut stream);
 //! ```
@@ -26,4 +26,3 @@ mod request;
 pub mod response;
 
 pub use request::parse_req;
-

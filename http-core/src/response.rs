@@ -1,7 +1,7 @@
-//! Contains necessary types, utilities and tools for HTTP Response handling. 
+//! Contains necessary types, utilities and tools for HTTP Response handling.
 
-use std::collections::HashMap;
 use crate::Method;
+use std::collections::HashMap;
 
 /// The response code status.
 #[derive(Debug, Clone)]
@@ -23,7 +23,7 @@ pub enum StatusCode {
     /// Represents the HTTP status code: `500`.
     InternalServerError,
     /// Represents the HTTP status code: `503.
-    ServiceUnavailable
+    ServiceUnavailable,
 }
 
 impl StatusCode {
@@ -38,7 +38,7 @@ impl StatusCode {
             Self::HttpVersionNotSupported => 505.to_string(),
             Self::MethodNotAllowed(_) => 405.to_string(),
             Self::InternalServerError => 500.to_string(),
-            Self::ServiceUnavailable => 503.to_string()
+            Self::ServiceUnavailable => 503.to_string(),
         }
     }
 }
@@ -52,7 +52,7 @@ pub struct Response {
 }
 
 impl Response {
-    /// Builds a new HTTP [`Response`] 
+    /// Builds a new HTTP [`Response`]
     pub fn new() -> Self {
         Self {
             status: StatusCode::Ok, // temporary default value
@@ -83,15 +83,15 @@ impl ResponseData for Response {
     fn set_status(&mut self, value: StatusCode) {
         self.status = value;
     }
-    
+
     fn get_headers_mut(&mut self) -> &mut HashMap<String, String> {
         &mut self.headers
     }
-    
+
     fn get_body(&self) -> Option<&Vec<u8>> {
         self.body.as_ref()
     }
-    
+
     fn get_status(&self) -> &StatusCode {
         &self.status
     }
@@ -103,8 +103,8 @@ impl ResponseData for Response {
 
 /// Defines fundamental data handling behavior to [`Response`]
 pub trait ResponseData {
-    /// Sets the headers of HTTP Response. 
-    /// 
+    /// Sets the headers of HTTP Response.
+    ///
     /// ```no_run
     /// # use std::collections::HashMap;
     /// # use http_core::response::Response;
@@ -112,24 +112,24 @@ pub trait ResponseData {
     /// let mut res = Response::new();
     /// res.set_headers(HashMap::new());
     /// ```
-    /// You can define a pre-defined set of headers: 
+    /// You can define a pre-defined set of headers:
     /// ```no_run
     /// # use std::collections::HashMap;
     /// # use http_core::response::Response;
     /// # use crate::http_core::response::ResponseData;
     /// let mut res = Response::new();
     /// let mut headers = HashMap::new();
-    /// 
+    ///
     /// headers.insert(
-    ///     "Content-Type".to_string(), 
+    ///     "Content-Type".to_string(),
     ///     "application/json".to_string()
     /// );
-    /// 
+    ///
     /// res.set_headers(headers);
     /// ```
     fn set_headers(&mut self, value: HashMap<String, String>);
     /// Sets the [`Response`] body.
-    /// ```no_run 
+    /// ```no_run
     /// # use http_core::response::Response;
     /// # use crate::http_core::response::ResponseData;
     /// let mut response = Response::new();

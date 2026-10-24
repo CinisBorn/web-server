@@ -45,24 +45,12 @@ impl ThreadPool {
     pub(crate) fn execute(&self, message: Message) {
         use http_core::response::StatusCode::ServiceUnavailable;
 
-        match self.sender.try_send(message) {
-            Ok(_) => {},
-            Err(TrySendError::Full(Message::NewJob(mut stream))) => {
-                let mut response = Response::new();
-                
-                response.set_status(ServiceUnavailable);
-                stream.send_response(&response.service_unavailable());
-            },
-            _ => {
-                /*
-                 * I will not handle it why the "sender" or "receiver" is 
-                 * dropped when the server shutdowns. 
-                 * 
-                 * It's unlike a TrySendError::Disconnected is returned in the 
-                 * current code design. 
-                 */
-            }
-        } 
+        if let Err(TrySendError::Full(Message::NewJob(mut stream))) = self.sender.try_send(message)
+        {
+            let mut response = Response::new();
+            response.set_status(ServiceUnavailable);
+            stream.send_response(&response.service_unavailable());
+        }
     }
 
     /// Creates a thread pool with the specified number of workers.
@@ -79,9 +67,7 @@ impl ThreadPool {
     ///
     /// Panics if `size` is zero.
     pub(crate) fn new(size: usize, router: Arc<Mutex<Router>>) -> Self {
-        if size <= 0 {
-            panic!("It's possible create zero or less threads");
-        }
+        assert!(size > 0);
 
         let (sender, receiver) = mpsc::sync_channel::<Message>(size);
         let receiver = Arc::new(Mutex::new(receiver));
@@ -99,10 +85,10 @@ impl ThreadPool {
 
         Self { workers, sender }
     }
-    
+
     /// Starts a worker that receives and processes pool messages.
     fn spawn_thread(rx: SharedReceiver, router: Arc<Mutex<Router>>) -> JoinHandle<()> {
-        let handle = std::thread::spawn(move || {
+        std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
 
@@ -114,9 +100,9 @@ impl ThreadPool {
                         let req_method = req.start_line().method();
 
                         if let Ok(router) = router {
-                            let mut res = router.match_route(&req).serialize(req_method);
+                            let res = router.match_route(&req).serialize(req_method);
 
-                            stream.send_response(&mut res);
+                            stream.send_response(&res);
                         } else {
                             let res: Option<&[u8]> = Some(b"Internal Server Error");
                             let res = Response::internal_error(res).serialize(req_method);
@@ -127,9 +113,7 @@ impl ThreadPool {
                     Message::Shutdown => break,
                 }
             }
-        });
-
-        handle
+        })
     }
 }
 

@@ -1,15 +1,17 @@
-//! Contains function for parsing headers and request line sections. 
+//! Contains function for parsing headers and request line sections.
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 
-use http_core::request::{RequestLine, HttpVersion};
 use http_core::Method;
+use http_core::request::{HttpVersion, RequestLine};
 
 use crate::error::ParserErr;
 use crate::helpers::find_line;
 
-pub(crate) fn parse_headers<T>(src: &mut BufReader<T>) -> Result<Option<HashMap<String, String>>, ParserErr>
+pub(crate) fn parse_headers<T>(
+    src: &mut BufReader<T>,
+) -> Result<Option<HashMap<String, String>>, ParserErr>
 where
     T: Read + Write,
 {
@@ -17,16 +19,16 @@ where
 
     loop {
         let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
-        
+
         if let Some(pos) = find_line(buf) {
             let line = &buf[..pos].to_owned();
             src.consume(line.len() + 2);
 
             if line.is_empty() {
-                if headers.is_empty() { 
-                    break Ok(None) 
-                } else { 
-                    break Ok(Some(headers))
+                if headers.is_empty() {
+                    break Ok(None);
+                } else {
+                    break Ok(Some(headers));
                 }
             }
 
@@ -38,23 +40,19 @@ where
             let value = &line[colon_position + 2..];
 
             let Ok(field) = std::str::from_utf8(field) else {
-                return Err(
-                    ParserErr::InvalidInput(
-                        String::from_utf8(field.to_vec()).unwrap()
-                    )
-                );
+                return Err(ParserErr::InvalidInput(
+                    String::from_utf8(field.to_vec()).unwrap(),
+                ));
             };
 
             let Ok(value) = std::str::from_utf8(value) else {
-                return Err(
-                    ParserErr::InvalidInput(
-                        String::from_utf8(value.to_vec()).unwrap()
-                    )
-                );
+                return Err(ParserErr::InvalidInput(
+                    String::from_utf8(value.to_vec()).unwrap(),
+                ));
             };
 
             headers.insert(field.to_owned(), value.to_owned());
-        } 
+        }
     }
 }
 
@@ -67,13 +65,19 @@ pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestL
             src.consume(pos + 2);
 
             let mut items = line.split(|byte| *byte == b' ');
-    
-            let met = items.next().ok_or(ParserErr::InvalidInput("Method not found".into()))?;
-            let tar = items.next().ok_or(ParserErr::InvalidInput("Target not Found".into()))?;
-            let ver = items.next().ok_or(ParserErr::InvalidInput("Version not Found".into()))?;
+
+            let met = items
+                .next()
+                .ok_or(ParserErr::InvalidInput("Method not found".into()))?;
+            let tar = items
+                .next()
+                .ok_or(ParserErr::InvalidInput("Target not Found".into()))?;
+            let ver = items
+                .next()
+                .ok_or(ParserErr::InvalidInput("Version not Found".into()))?;
 
             if items.next().is_some() {
-                return Err(ParserErr::TooManyItems)
+                return Err(ParserErr::TooManyItems);
             }
 
             let method = std::str::from_utf8(met)
@@ -81,7 +85,7 @@ pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestL
 
             let target = std::str::from_utf8(tar)
                 .map_err(|_| ParserErr::InvalidInput("Invalid target encoding".into()))?;
-            
+
             let version = std::str::from_utf8(ver)
                 .map_err(|_| ParserErr::InvalidInput("Invalid HTTP version encoding".into()))?;
 
@@ -89,11 +93,11 @@ pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestL
             let ver = HttpVersion::map(version);
 
             if let HttpVersion::Unsupported(v) = ver {
-                return Err(ParserErr::UnsupportedHttpVersion(v.to_owned())) 
+                return Err(ParserErr::UnsupportedHttpVersion(v.clone()));
             }
-            
+
             let req_start_line = RequestLine::new(ver, met, target.to_owned());
-            
+
             break Ok(req_start_line);
         }
     }
@@ -105,7 +109,7 @@ use std::io::Cursor;
 fn mock_reader(inner: &[u8]) -> BufReader<Cursor<Vec<u8>>> {
     let mut src = Cursor::new(inner.to_vec());
     src.set_position(0);
-    
+
     BufReader::new(src)
 }
 
@@ -126,14 +130,14 @@ mod request_line {
 
         match res.method() {
             Method::GET => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
 
         match res.version() {
             HttpVersion::V1 => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
-        
+
         assert_eq!(res.target(), "/");
     }
 
@@ -144,7 +148,7 @@ mod request_line {
 
         match res {
             ParserErr::UnsupportedHttpVersion(_) => return Ok(()),
-            _ => return Err(())
+            _ => return Err(()),
         }
     }
 
@@ -155,7 +159,7 @@ mod request_line {
 
         match res {
             ParserErr::InvalidInput(_) => Ok(()),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 
@@ -166,7 +170,7 @@ mod request_line {
 
         match res {
             ParserErr::TooManyItems => Ok(()),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -179,9 +183,9 @@ mod headers_parsing {
     fn header_is_parsed() {
         let mut src = mock_reader(
             b"Host: 127.0.0.1\r\n\
-            \r\n"
+            \r\n",
         );
-        
+
         parse_headers(&mut src).unwrap();
     }
 
@@ -189,7 +193,7 @@ mod headers_parsing {
     fn header_content_is_correct() {
         let mut src = mock_reader(
             b"Host: 127.0.0.1\r\n\
-            \r\n"
+            \r\n",
         );
         let res = parse_headers(&mut src).unwrap().unwrap();
         assert_eq!(res.get("Host").unwrap(), "127.0.0.1");
@@ -199,7 +203,7 @@ mod headers_parsing {
     fn request_without_headers_pass() -> Result<(), ()> {
         let mut src = mock_reader(b"\r\n");
         let res = parse_headers(&mut src).unwrap();
-     
+
         match res {
             Some(_) => Err(()),
             None => Ok(()),
@@ -210,10 +214,10 @@ mod headers_parsing {
     fn bad_formatted_headers_fail() -> Result<(), ()> {
         let mut src = mock_reader(b"host 127.0.0.1\r\n\r\n");
         let res = parse_headers(&mut src).unwrap_err();
-     
+
         match res {
             ParserErr::InvalidInput(_) => Ok(()),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

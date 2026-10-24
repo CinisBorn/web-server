@@ -5,16 +5,15 @@ use std::io::{BufRead, BufReader, Read, Write};
 
 use crate::error::ParserErr;
 
-
 pub(crate) fn read_body<T>(
-    src: &mut BufReader<T>, 
-    headers: Option<&HashMap<String, String>>
+    src: &mut BufReader<T>,
+    headers: Option<&HashMap<String, String>>,
 ) -> Result<Option<String>, ParserErr>
 where
     T: Read + Write,
 {
     let Some(headers) = headers else {
-        return Ok(None)
+        return Ok(None);
     };
     let Some(content_length) = headers.get("Content-length") else {
         return Ok(None);
@@ -37,7 +36,7 @@ where
     }
 
     src.consume(body.len());
-    
+
     let Ok(body_txt) = String::from_utf8(body) else {
         return Err(ParserErr::InvalidInput(String::from("No Valid Input")));
     };

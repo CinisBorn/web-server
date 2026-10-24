@@ -4,7 +4,7 @@
 pub mod error;
 
 use std::io::Write;
-use std::{net::{TcpListener, TcpStream}};
+use std::net::{TcpListener, TcpStream};
 
 use crate::error::ConnectionError;
 
@@ -39,9 +39,9 @@ impl Connection {
     /// # Errors
     ///
     /// An *io* error is returned if a related error is triggered.
-    /// 
-    /// # Panics 
-    /// 
+    ///
+    /// # Panics
+    ///
     /// Panics if the `WS` environment variable isn't a valid Unicode
     pub fn new() -> Result<Self, ConnectionError> {
         let env = std::env::var_os("WS");
@@ -68,8 +68,6 @@ impl Connection {
     /// An error will occur if it's not possible to accept the incoming connection.
     pub fn connect(&self) -> Result<ConnectionStream, ConnectionError> {
         let (stream, _) = self.socket.accept()?;
-        Ok(ConnectionStream {
-            stream,
-        })
+        Ok(ConnectionStream { stream })
     }
 }

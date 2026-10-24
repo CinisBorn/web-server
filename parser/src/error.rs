@@ -15,16 +15,16 @@ pub enum ParserErr {
     /// It's a temporary measure why the understading of "unknown method" isn't well defined.
     /// It's very common costumized methods or fields in HTTP requests because HTTP is extensible by design.
     UnknownMethod(String),
-    /// Unexpected input was found. 
+    /// Unexpected input was found.
     InvalidInput(String),
-    /// The parsing process was ignored. 
-    /// 
-    /// The main purpose of this variant is to signal a process was skipped. 
+    /// The parsing process was ignored.
+    ///
+    /// The main purpose of this variant is to signal a process was skipped.
     Ignored,
-    /// The client made a request with an unsupported HTTP version. 
+    /// The client made a request with an unsupported HTTP version.
     UnsupportedHttpVersion(String),
     /// The request contains more items than expected.
-    TooManyItems
+    TooManyItems,
 }
 
 impl std::error::Error for ParserErr {}
@@ -37,7 +37,7 @@ impl std::fmt::Display for ParserErr {
             ParserErr::InvalidInput(s) => write!(f, "Unexpected input: {s}"),
             ParserErr::Ignored => write!(f, ""),
             Self::UnsupportedHttpVersion(version) => write!(f, "{version}"),
-            Self::TooManyItems => write!(f, "The request contains more items than expected")
+            Self::TooManyItems => write!(f, "The request contains more items than expected"),
         }
     }
 }

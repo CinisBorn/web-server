@@ -1,16 +1,16 @@
 //! Provides tools for client request handling
 
-mod header_section;
 mod body;
+mod header_section;
 
-use std::io::{BufReader, Read, Write};
 use http_core::request::Request;
+use std::io::{BufReader, Read, Write};
 
 use crate::error::ParserErr;
 
+use body::read_body;
 use header_section::parse_headers;
 use header_section::parse_req_line;
-use body::read_body;
 
 /// Parses a incoming request.
 ///
@@ -22,10 +22,10 @@ where
     T: Read + Write,
 {
     let mut reader = BufReader::new(src);
-    
+
     let start_line = parse_req_line(&mut reader)?;
     let headers = parse_headers(&mut reader)?;
-    let body = read_body(&mut reader,headers.as_ref())?;
+    let body = read_body(&mut reader, headers.as_ref())?;
 
     Ok(Request::new(start_line, headers, body))
 }
