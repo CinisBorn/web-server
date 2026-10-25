@@ -7,6 +7,7 @@
 //! The pool owns the worker threads and coordinates their shutdown when
 //! it is dropped.
 
+use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -109,13 +110,20 @@ impl ThreadPool {
                             let router = router.lock();
                             
                             if let Ok(router) = router {
-                                let res = router.match_route(&req).serialize(req_method);
+                                let mut res = router.match_route(&req);
     
-                                stream.send_response(&res);
-                                println!("sent");
                                 if let Some(value) = closure {
                                     if value == "close" {
-                                        println!("close");
+                                        let mut headers = HashMap::new();
+
+                                        headers.insert(
+                                            "Connection".to_string(), 
+                                            "close".to_string()
+                                        );
+                                        
+                                        res.set_headers(headers);
+
+                                        stream.send_response(&res.serialize(req_method));
                                         break
                                     }                                    
                                 }
