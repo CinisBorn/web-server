@@ -26,6 +26,6 @@ where
     let start_line = parse_req_line(&mut reader)?;
     let headers = parse_headers(&mut reader)?;
     let body = read_body(&mut reader, headers.as_ref())?;
-
+    
     Ok(Request::new(start_line, headers, body))
 }

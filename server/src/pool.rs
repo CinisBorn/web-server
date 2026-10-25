@@ -94,20 +94,37 @@ impl ThreadPool {
 
                 match request {
                     Message::NewJob(mut stream) => {
-                        let router = router.lock();
+                        loop {
+                            let req = parse_req(stream.stream_mut()).unwrap();
+                            let req_method = req.start_line().method();
+                            let closure;
 
-                        let req = parse_req(stream.stream_mut()).unwrap();
-                        let req_method = req.start_line().method();
-
-                        if let Ok(router) = router {
-                            let res = router.match_route(&req).serialize(req_method);
-
-                            stream.send_response(&res);
-                        } else {
-                            let res: Option<&[u8]> = Some(b"Internal Server Error");
-                            let res = Response::internal_error(res).serialize(req_method);
-
-                            stream.send_response(&res);
+                            if let Some(headers) = req.headers() {
+                                let conn = headers.get("Connection");
+                                closure = conn;
+                            } else {
+                                closure = None
+                            }
+                            
+                            let router = router.lock();
+                            
+                            if let Ok(router) = router {
+                                let res = router.match_route(&req).serialize(req_method);
+    
+                                stream.send_response(&res);
+                                println!("sent");
+                                if let Some(value) = closure {
+                                    if value == "close" {
+                                        println!("close");
+                                        break
+                                    }                                    
+                                }
+                            } else {
+                                let res: Option<&[u8]> = Some(b"Internal Server Error");
+                                let res = Response::internal_error(res).serialize(req_method);
+    
+                                stream.send_response(&res);
+                            }
                         }
                     }
                     Message::Shutdown => break,
