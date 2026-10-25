@@ -98,4 +98,13 @@ impl Request {
     pub fn body(&self) -> Option<&String> {
         self.body.as_ref()
     }
+
+    /// Returns the connection header of request if any.
+    pub fn connection(&self) -> Option<&str> {
+        if let Some(headers) = self.headers() {
+            headers.get("Connection").map(|v| v.as_ref())            
+        } else {
+            None
+        }
+    }
 }

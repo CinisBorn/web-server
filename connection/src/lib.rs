@@ -28,9 +28,7 @@ impl ConnectionStream {
 
     /// Returns a mutable reference of `TcpStream`.
     pub fn stream_mut(&mut self) -> &mut TcpStream {
-        let a = &mut self.stream;
-        println!("ops...");
-        a
+        &mut self.stream
     }
 }
 

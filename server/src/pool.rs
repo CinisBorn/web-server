@@ -17,6 +17,7 @@ use http_core::response::{Response, ResponseData};
 use http_parser::parse_req;
 use http_parser::response::SerializeResponse;
 use routing::Router;
+use http_core::Method;
 
 type Workers = Vec<JoinHandle<()>>;
 /// Shared receiver used by workers to retrieve pool messages.
@@ -99,42 +100,25 @@ impl ThreadPool {
                     Message::NewJob(mut stream) => {
                         loop {
                             let req = parse_req(stream.stream_mut()).unwrap();
-                            let req = match req {
-                                ParserState::Complete(req) => req,
-                                ParserState::ConnectionClosed => break
-                            };
-                            
-                            let req_method = req.start_line().method();
-                            let closure;
+                            let ParserState::Complete(req) = req else { break };
 
-                            if let Some(headers) = req.headers() {
-                                let conn = headers.get("Connection");
-                                closure = conn;
-                            } else {
-                                closure = None
-                            }
-                            
+                            let req_method = req.start_line().method();
+                            let closure = req.connection();
                             let router = router.lock();
                             
                             if let Ok(router) = router {
                                 let mut res = router.match_route(&req);
     
-                                if let Some(value) = closure {
-                                    if value == "close" {
-                                        let mut headers = HashMap::new();
+                                let finish_work = Self::finish_worker_job(
+                                    &mut stream, 
+                                    &mut res, 
+                                    closure, 
+                                    req_method
+                                );
 
-                                        headers.insert(
-                                            "Connection".to_string(), 
-                                            "close".to_string()
-                                        );
-                                        
-                                        res.set_headers(headers);
-
-                                        stream.send_response(&res.serialize(req_method));
-                                        stream.stream_mut().shutdown(std::net::Shutdown::Write).unwrap();
-                                        
-                                        break
-                                    }
+                                match finish_work {
+                                    Some(_) => break,
+                                    _ => {}
                                 }
                                 
                                 stream.send_response(&res.serialize(req_method));                           
@@ -150,6 +134,35 @@ impl ThreadPool {
                 }
             }
         })
+    }
+
+    fn finish_worker_job(
+        stream: &mut ConnectionStream,
+        res: &mut Response,
+        closure: Option<&str>, 
+        method: &Method
+    ) -> Option<Message> {
+        if let Some(value) = closure {
+            if value == "close" {
+                let mut headers = HashMap::new();
+
+                headers.insert(
+                    "Connection".to_string(), 
+                    "close".to_string()
+                );
+                
+                res.set_headers(headers);
+
+                stream.send_response(&res.serialize(&method));
+                stream.stream_mut().shutdown(std::net::Shutdown::Write).unwrap();
+                
+                Some(Message::Shutdown)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
