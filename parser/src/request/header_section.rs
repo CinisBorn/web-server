@@ -8,10 +8,11 @@ use http_core::request::{HttpVersion, RequestLine};
 
 use crate::error::ParserErr;
 use crate::helpers::find_line;
+use crate::ParserState;
 
 pub(crate) fn parse_headers<T>(
     src: &mut BufReader<T>,
-) -> Result<Option<HashMap<String, String>>, ParserErr>
+) -> Result<ParserState<Option<HashMap<String, String>>>, ParserErr>
 where
     T: Read + Write,
 {
@@ -20,15 +21,19 @@ where
     loop {
         let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
 
+        if buf.is_empty() {
+            return Ok(ParserState::ConnectionClosed)
+        }
+
         if let Some(pos) = find_line(buf) {
             let line = &buf[..pos].to_owned();
             src.consume(line.len() + 2);
 
             if line.is_empty() {
                 if headers.is_empty() {
-                    break Ok(None);
+                    break Ok(ParserState::Complete(None));
                 } else {
-                    break Ok(Some(headers));
+                    break Ok(ParserState::Complete(Some(headers)));
                 }
             }
 
@@ -56,9 +61,16 @@ where
     }
 }
 
-pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestLine, ParserErr> {
+pub(crate) fn parse_req_line<T>(src: &mut BufReader<T>) -> Result<ParserState<RequestLine>, ParserErr> 
+where 
+    T: Read
+{
     loop {
         let buf = src.fill_buf().map_err(|e| ParserErr::Io(e))?;
+
+        if buf.is_empty() {
+            return Ok(ParserState::ConnectionClosed);
+        }
 
         if let Some(pos) = find_line(buf) {
             let line = buf[..pos].to_owned();
@@ -98,7 +110,7 @@ pub(crate) fn parse_req_line<T: Read>(src: &mut BufReader<T>) -> Result<RequestL
 
             let req_start_line = RequestLine::new(ver, met, target.to_owned());
 
-            break Ok(req_start_line);
+            break Ok(ParserState::Complete(req_start_line));
         }
     }
 }
@@ -126,7 +138,10 @@ mod request_line {
     #[test]
     fn parsed_content_is_correct() {
         let mut src = mock_reader(b"GET / HTTP/1.1\r\n\r\n");
-        let res = parse_req_line(&mut src).unwrap();
+        let res = match parse_req_line(&mut src).unwrap() {
+            ParserState::Complete(res) => res,
+            ParserState::ConnectionClosed => panic!("Connection Closed")
+        };
 
         match res.method() {
             Method::GET => assert!(true),
@@ -195,14 +210,21 @@ mod headers_parsing {
             b"Host: 127.0.0.1\r\n\
             \r\n",
         );
-        let res = parse_headers(&mut src).unwrap().unwrap();
+        let res = match parse_headers(&mut src).unwrap() {
+            ParserState::Complete(res) => res.unwrap(),
+            ParserState::ConnectionClosed => panic!("Connection was closed") 
+        };
+        
         assert_eq!(res.get("Host").unwrap(), "127.0.0.1");
     }
 
     #[test]
     fn request_without_headers_pass() -> Result<(), ()> {
         let mut src = mock_reader(b"\r\n");
-        let res = parse_headers(&mut src).unwrap();
+        let res = match parse_headers(&mut src).unwrap() {
+            ParserState::Complete(res) => res,
+            ParserState::ConnectionClosed => panic!("Connection was closed") 
+        };
 
         match res {
             Some(_) => Err(()),

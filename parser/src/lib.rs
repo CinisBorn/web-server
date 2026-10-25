@@ -26,3 +26,15 @@ mod request;
 pub mod response;
 
 pub use request::parse_req;
+
+#[derive(Debug)]
+/// Tracks the parsing process. 
+/// 
+/// If [`ParserState::Complete`], a `Request` or `Response` is returned.
+/// If [`ConnectionClosed`], the caller must handle it. 
+pub enum ParserState<T> {
+    /// The request or response was parsed successfully.
+    Complete(T),
+    /// The client closed the connection.
+    ConnectionClosed
+}

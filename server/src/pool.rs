@@ -89,6 +89,8 @@ impl ThreadPool {
 
     /// Starts a worker that receives and processes pool messages.
     fn spawn_thread(rx: SharedReceiver, router: Arc<Mutex<Router>>) -> JoinHandle<()> {
+        use http_parser::ParserState;
+        
         std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
@@ -97,6 +99,11 @@ impl ThreadPool {
                     Message::NewJob(mut stream) => {
                         loop {
                             let req = parse_req(stream.stream_mut()).unwrap();
+                            let req = match req {
+                                ParserState::Complete(req) => req,
+                                ParserState::ConnectionClosed => break
+                            };
+                            
                             let req_method = req.start_line().method();
                             let closure;
 
@@ -124,9 +131,13 @@ impl ThreadPool {
                                         res.set_headers(headers);
 
                                         stream.send_response(&res.serialize(req_method));
+                                        stream.stream_mut().shutdown(std::net::Shutdown::Write).unwrap();
+                                        
                                         break
-                                    }                                    
+                                    }
                                 }
+                                
+                                stream.send_response(&res.serialize(req_method));                           
                             } else {
                                 let res: Option<&[u8]> = Some(b"Internal Server Error");
                                 let res = Response::internal_error(res).serialize(req_method);

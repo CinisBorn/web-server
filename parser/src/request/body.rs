@@ -4,19 +4,20 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 
 use crate::error::ParserErr;
+use crate::ParserState;
 
 pub(crate) fn read_body<T>(
     src: &mut BufReader<T>,
     headers: Option<&HashMap<String, String>>,
-) -> Result<Option<String>, ParserErr>
+) -> Result<ParserState<Option<String>>, ParserErr>
 where
     T: Read + Write,
 {
     let Some(headers) = headers else {
-        return Ok(None);
+        return Ok(ParserState::Complete(None));
     };
     let Some(content_length) = headers.get("Content-length") else {
-        return Ok(None);
+        return Ok(ParserState::Complete(None));
     };
 
     let Ok(content_length) = content_length.parse::<usize>() else {
@@ -41,5 +42,5 @@ where
         return Err(ParserErr::InvalidInput(String::from("No Valid Input")));
     };
 
-    Ok(Some(body_txt))
+    Ok(ParserState::Complete(Some(body_txt)))
 }
