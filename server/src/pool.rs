@@ -12,7 +12,7 @@ use std::sync::mpsc::{self, Receiver, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use connection::{ConnectionStream, Stream};
+use connection::Stream;
 
 use http_core::response::{Response, ResponseData};
 use http_core::Method;
@@ -24,30 +24,30 @@ use routing::Router;
 
 type Workers = Vec<JoinHandle<()>>;
 /// Shared receiver used by workers to retrieve pool messages.
-type SharedReceiver = Arc<Mutex<Receiver<Message>>>;
+type SharedReceiver<T> = Arc<Mutex<Receiver<Message<T>>>>;
 
 /// Protocol commucation among workers
-pub(crate) enum Message {
+pub(crate) enum Message<T> {
     /// Handle requests
-    NewJob(ConnectionStream),
+    NewJob(T),
     /// Shutdown a worker
     Shutdown,
 }
 
 /// A thread pool for workers management.
-pub(crate) struct ThreadPool {
+pub(crate) struct ThreadPool<T: Stream + Send + 'static> {
     workers: Workers,
-    sender: mpsc::SyncSender<Message>,
+    sender: mpsc::SyncSender<Message<T>>,
 }
 
-impl ThreadPool {
+impl<T: Stream + Send + 'static> ThreadPool<T> {
     /// Submits a message to the worker pool.
     ///
     /// # Panics
     ///
     /// Panics if all receivers have been dropped and the message cannot
     /// be sent.
-    pub(crate) fn execute(&self, message: Message) {
+    pub(crate) fn execute(&self, message: Message<T>) {
         use http_core::response::StatusCode::ServiceUnavailable;
 
         if let Err(TrySendError::Full(Message::NewJob(mut stream))) = self.sender.try_send(message)
@@ -74,7 +74,7 @@ impl ThreadPool {
     pub(crate) fn new(size: usize, router: Arc<Router>) -> Self {
         assert!(size > 0);
 
-        let (sender, receiver) = mpsc::sync_channel::<Message>(size);
+        let (sender, receiver) = mpsc::sync_channel::<Message<T>>(size);
         let receiver = Arc::new(Mutex::new(receiver));
         let router = router;
         let mut workers = Vec::new();
@@ -92,7 +92,7 @@ impl ThreadPool {
     }
 
     /// Starts a worker that receives and processes pool messages.
-    fn spawn_thread(rx: SharedReceiver, router: Arc<Router>) -> JoinHandle<()> {
+    fn spawn_thread(rx: SharedReceiver<T>, router: Arc<Router>) -> JoinHandle<()> {
         std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
@@ -108,7 +108,7 @@ impl ThreadPool {
     }
 
     fn finish_worker_job(
-        stream: &mut ConnectionStream,
+        stream: &mut T,
         res: &mut Response,
         closure: Option<&str>, 
         method: &Method
@@ -136,7 +136,7 @@ impl ThreadPool {
         }
     }
 
-    fn handle_connection(stream: &mut ConnectionStream, router: &Arc<Router>) {
+    fn handle_connection(stream: &mut T, router: &Arc<Router>) {
         loop {
             let req = parse_req(stream.stream_mut()).unwrap();
             let ParserState::Complete(req) = req else { break };
@@ -163,7 +163,7 @@ impl ThreadPool {
     }
 }
 
-impl Drop for ThreadPool {
+impl<T: Stream + Send + 'static> Drop for ThreadPool<T> {
     fn drop(&mut self) {
         for _ in &self.workers {
             self.sender.send(Message::Shutdown).unwrap();
