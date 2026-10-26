@@ -69,6 +69,22 @@ impl Router {
 
         response
     }
+
+    /// Registers a new `GET` endpoint to the routing.
+    pub fn get<T>(&mut self, uri: &str, handle: T)
+    where
+        T: Fn(&Request) -> Response + 'static + Sync + Send,
+    {
+        self.register_route(uri, "GET", handle);
+    }
+
+    /// Register a new `HEAD` endpoint to the router.
+    pub fn head<T>(&mut self, target: &str, handle: T)
+    where
+        T: Fn(&Request) -> Response + 'static + Sync + Send,
+    {
+        self.register_route(target, "HEAD", handle);
+    }
 }
 
 /// Checks if the route match testing `route` against a `request`.

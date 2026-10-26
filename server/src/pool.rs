@@ -13,11 +13,14 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use connection::ConnectionStream;
+
 use http_core::response::{Response, ResponseData};
-use http_parser::parse_req;
-use http_parser::response::SerializeResponse;
-use routing::Router;
 use http_core::Method;
+
+use http_parser::{parse_req, ParserState};
+use http_parser::response::SerializeResponse;
+
+use routing::Router;
 
 type Workers = Vec<JoinHandle<()>>;
 /// Shared receiver used by workers to retrieve pool messages.
@@ -68,7 +71,7 @@ impl ThreadPool {
     /// # Panics
     ///
     /// Panics if `size` is zero.
-    pub(crate) fn new(size: usize, router: Arc<Mutex<Router>>) -> Self {
+    pub(crate) fn new(size: usize, router: Arc<Router>) -> Self {
         assert!(size > 0);
 
         let (sender, receiver) = mpsc::sync_channel::<Message>(size);
@@ -89,45 +92,14 @@ impl ThreadPool {
     }
 
     /// Starts a worker that receives and processes pool messages.
-    fn spawn_thread(rx: SharedReceiver, router: Arc<Mutex<Router>>) -> JoinHandle<()> {
-        use http_parser::ParserState;
-        
+    fn spawn_thread(rx: SharedReceiver, router: Arc<Router>) -> JoinHandle<()> {
         std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
 
                 match request {
                     Message::NewJob(mut stream) => {
-                        loop {
-                            let req = parse_req(stream.stream_mut()).unwrap();
-                            let ParserState::Complete(req) = req else { break };
-
-                            let req_method = req.start_line().method();
-                            let closure = req.connection();
-                            let router = router.lock();
-                            
-                            if let Ok(router) = router {
-                                let mut res = router.match_route(&req);
-    
-                                let finish_work = Self::finish_worker_job(
-                                    &mut stream, 
-                                    &mut res, 
-                                    closure, 
-                                    req_method
-                                );
-
-                                if finish_work {
-                                    break
-                                }
-                                
-                                stream.send_response(&res.serialize(req_method));                           
-                            } else {
-                                let res: Option<&[u8]> = Some(b"Internal Server Error");
-                                let res = Response::internal_error(res).serialize(req_method);
-    
-                                stream.send_response(&res);
-                            }
-                        }
+                        Self::handle_connection(&mut stream, &router);
                     }
                     Message::Shutdown => break,
                 }
@@ -161,6 +133,32 @@ impl ThreadPool {
             }
         } else {
             false
+        }
+    }
+
+    fn handle_connection(stream: &mut ConnectionStream, router: &Arc<Router>) {
+        loop {
+            let req = parse_req(stream.stream_mut()).unwrap();
+            let ParserState::Complete(req) = req else { break };
+
+            let req_method = req.start_line().method();
+            let closure = req.connection();
+            let router = router;
+        
+            let mut res = router.match_route(&req);
+            
+            let finish_work = Self::finish_worker_job(
+                stream, 
+                &mut res, 
+                closure, 
+                req_method
+            );
+            
+            if finish_work {
+                break
+            }
+            
+            stream.send_response(&res.serialize(req_method));                           
         }
     }
 }

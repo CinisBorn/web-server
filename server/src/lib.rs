@@ -2,39 +2,34 @@
 //! connection handling, and server configuration.
 //!
 //! ```no_run
-//! use http_core::response::{
-//!     Response,
-//!     ResponseData,
-//!     StatusCode
-//! };
+//! # use http_core::response::{Response, ResponseData, StatusCode};
+//! # use server::Router;
+//! # use server::Server;
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!    let mut router = Router::new();
 //!
-//! use server::Server;
+//!    router.get("/test", |_| {
+//!        let mut response = Response::new();
+//!        response.set_status(StatusCode::Ok);
+//!        response.set_body(Some(b"Everything is OK"));
+//!        response
+//!    });
 //!
-//! let mut server = Server::new();
+//!    router.head("/test", |_| {
+//!        let mut response = Response::new();
+//!        response.set_status(StatusCode::Ok);
 //!
-//! server.get("/test", |_| {
-//!     let mut response = Response::new();
-//!     response.set_status(StatusCode::Ok);
-//!     response.set_body(Some(b"Everything is OK"));
-//!     response
-//! });
+//!        response
+//!    });
+//!    
+//!    Server::new().start(router)?;
 //!
-//! server.head("/test", |_| {
-//!     let mut response = Response::new();
-//!     response.set_status(StatusCode::Ok);
-//!
-//!     response
-//! });
-//!
-//! server.start();
-//! ```
+//!    Ok(())
+//!}
+//!```
 //!
 //! # Routing
-//!
-//! Use [`Server::get`] and [`Server::head`] to register handlers for GET and
-//! HEAD requests, respectively. Register all required routes before starting
-//! the server.
-//!
+//! 
 //! When a client connects, the server accepts the connection, processes the
 //! incoming request, matches it against the registered routes, and generates
 //! an HTTP response.
@@ -42,14 +37,13 @@
 //! # Configuration
 //!
 //! The server uses a thread pool to process incoming connections. By default,
-//! it creates 10 worker threads. Use [`Server::set_workers`] to configure the
+//! it creates 10 worker threads. Use [Server::set_workers] to configure the
 //! number of workers before starting the server.
 
 use connection::Connection;
-use http_core::{request::Request, response::Response};
-use routing::Router;
+pub use routing::Router;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::pool::ThreadPool;
 
@@ -58,58 +52,15 @@ mod pool;
 /// The server
 #[allow(missing_debug_implementations)]
 pub struct Server {
-    router: Arc<Mutex<Router>>,
     workers: usize,
 }
 
-impl Default for Server {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// ROUTING RELATED IMPLEMENTATIONS
 impl Server {
     /// Creates a new instance of [`Server`].
     pub fn new() -> Self {
         Self {
-            router: Arc::new(Mutex::new(Router::new())),
             workers: 10,
         }
-    }
-
-    /// Registers a new `GET` endpoint to the routing.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn get<T>(&mut self, uri: &str, handle: T)
-    where
-        T: Fn(&Request) -> Response + 'static + Sync + Send,
-    {
-        let mut router = self.router.lock().unwrap();
-        router.register_route(uri, "GET", handle);
-    }
-
-    /// Register a new `HEAD` endpoint to the router.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn head<T>(&mut self, target: &str, handle: T)
-    where
-        T: Fn(&Request) -> Response + 'static + Sync + Send,
-    {
-        let mut router = self.router.lock().unwrap();
-        router.register_route(target, "HEAD", handle);
-    }
-
-    /// Matchs the request against registered routes.
-    ///
-    /// If the caller registers equal routes, the first is found is matched.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn match_routes(&self, request: &Request) -> Response {
-        let router = self.router.lock().unwrap();
-        router.match_route(request)
-    }
-
-    /// Returns a reference to server router.
-    pub fn router(&self) -> Arc<Mutex<Router>> {
-        Arc::clone(&self.router)
     }
 }
 // GENERAL SERVER RELATED IMPLEMENTATIONS
@@ -118,14 +69,41 @@ impl Server {
     ///
     /// Note you must set endpoints before start the server.
     /// Otherwise, the server won't match against any route.
+    /// ```no_run
+    /// # use http_core::response::{Response, ResponseData, StatusCode};
+    /// # use server::Router;
+    /// # use server::Server;
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///    let mut router = Router::new();
+    ///
+    ///    router.get("/test", |_| {
+    ///        let mut response = Response::new();
+    ///        response.set_status(StatusCode::Ok);
+    ///        response.set_body(Some(b"Everything is OK"));
+    ///        response
+    ///    });
+    ///
+    ///    router.head("/test", |_| {
+    ///        let mut response = Response::new();
+    ///        response.set_status(StatusCode::Ok);
+    ///
+    ///        response
+    ///    });
+    ///    
+    ///    Server::new().start(router)?;
+    ///
+    ///    Ok(())
+    ///}
+    /// ```
     ///
     /// # Errors
     ///
     /// An error is returned if it's not possible establish a
     /// connection successfully.
-    pub fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn start(&self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
         let conn = Connection::new()?;
-        let pool = ThreadPool::new(self.workers, self.router());
+        let router = Arc::new(router);
+        let pool = ThreadPool::new(self.workers, Arc::clone(&router));
 
         loop {
             let stream = conn.connect()?;
