@@ -50,11 +50,19 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
     pub(crate) fn execute(&self, message: Message<T>) {
         use http_core::response::StatusCode::ServiceUnavailable;
 
-        if let Err(TrySendError::Full(Message::NewJob(mut stream))) = self.sender.try_send(message)
-        {
-            let mut response = Response::new();
-            response.set_status(ServiceUnavailable);
-            stream.send_response(&response.service_unavailable());
+        match self.sender.try_send(message) {
+            Err(TrySendError::Full(Message::NewJob(mut stream))) => {
+                let mut response = Response::new();
+                response.set_status(ServiceUnavailable);
+                stream.send_response(&response.service_unavailable());
+            }
+        
+            Err(TrySendError::Disconnected(_)) => {
+                // The receiver has disconnected.
+                // Log the failure or handle it appropriately.
+            },
+
+            _ => {}
         }
     }
 
