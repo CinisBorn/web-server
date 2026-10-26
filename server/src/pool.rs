@@ -84,7 +84,7 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
 
         let (sender, receiver) = mpsc::sync_channel::<Message<T>>(size);
         let receiver = Arc::new(Mutex::new(receiver));
-        let router = router;
+        
         let mut workers = Vec::new();
 
         for _ in 0..size {
