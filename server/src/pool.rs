@@ -116,9 +116,8 @@ impl ThreadPool {
                                     req_method
                                 );
 
-                                match finish_work {
-                                    Some(_) => break,
-                                    _ => {}
+                                if finish_work {
+                                    break
                                 }
                                 
                                 stream.send_response(&res.serialize(req_method));                           
@@ -141,7 +140,7 @@ impl ThreadPool {
         res: &mut Response,
         closure: Option<&str>, 
         method: &Method
-    ) -> Option<Message> {
+    ) -> bool {
         if let Some(value) = closure {
             if value == "close" {
                 let mut headers = HashMap::new();
@@ -156,12 +155,12 @@ impl ThreadPool {
                 stream.send_response(&res.serialize(&method));
                 stream.stream_mut().shutdown(std::net::Shutdown::Write).unwrap();
                 
-                Some(Message::Shutdown)
+                true
             } else {
-                None
+                false
             }
         } else {
-            None
+            false
         }
     }
 }
