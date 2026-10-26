@@ -106,7 +106,7 @@ fn is_target_route(route: &Route, request: &Request) -> bool {
     let is_method = route.method == *request.start_line().method();
     let is_target = route.target == request.start_line().target();
 
-    !is_method || is_target
+    is_target && !is_method 
 }
 
 fn check_possible_routes(routes: &[Route], req_target: &str, request: &Request) -> Response {
