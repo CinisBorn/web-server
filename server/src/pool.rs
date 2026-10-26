@@ -12,7 +12,7 @@ use std::sync::mpsc::{self, Receiver, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use connection::ConnectionStream;
+use connection::{ConnectionStream, Stream};
 
 use http_core::response::{Response, ResponseData};
 use http_core::Method;

@@ -20,16 +20,28 @@ pub struct ConnectionStream {
     stream: TcpStream,
 }
 
-impl ConnectionStream {
-    /// Sends a reponse to client
-    pub fn send_response(&mut self, content: &[u8]) {
+impl Stream for ConnectionStream {
+    fn send_response(&mut self, content: &[u8]) {
         let _ = self.stream.write(content);
     }
 
-    /// Returns a mutable reference of `TcpStream`.
-    pub fn stream_mut(&mut self) -> &mut TcpStream {
+    fn stream_mut(&mut self) -> &mut TcpStream {
         &mut self.stream
     }
+
+    fn stream(&self) -> &TcpStream {
+        &self.stream
+    }
+}
+
+/// Provides behavior for connection stream handling. 
+pub trait Stream {
+    /// Gets a mutable reference to the inner [`TcpStream`].
+    fn stream_mut(&mut self) -> &mut TcpStream;
+    /// Gets a reference to the inner [`TcpStream`]. 
+    fn stream(&self) -> &TcpStream;
+    /// Sends a reponse to client
+    fn send_response(&mut self, content: &[u8]);
 }
 
 impl Connection {
