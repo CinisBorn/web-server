@@ -43,7 +43,7 @@
 use connection::Connection;
 pub use routing::Router;
 
-use std::sync::Arc;
+use std::{net::TcpListener, sync::Arc};
 
 use crate::pool::ThreadPool;
 
@@ -102,6 +102,22 @@ impl Server {
     /// connection successfully.
     pub fn start(&self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
         let conn = Connection::new()?;
+        let router = Arc::new(router);
+        let pool = ThreadPool::new(self.workers, Arc::clone(&router));
+
+        loop {
+            let stream = conn.connect()?;
+            pool.execute(pool::Message::NewJob(stream));
+        }
+    }
+
+    /// Starts the server with a given [`TcpListener`].
+    pub fn start_with_listener(
+        &self, 
+        router: Router, 
+        listener: TcpListener
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let conn = Connection::with_listener(listener)?;
         let router = Arc::new(router);
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
 

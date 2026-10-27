@@ -72,6 +72,11 @@ impl Connection {
         }
     }
 
+    /// Creates a connection with a given listener
+    pub fn with_listener(listener: TcpListener) -> Result<Self, ConnectionError> {
+        Ok(Self { socket: listener })
+    }
+
     /// Accepts a new incoming connection, returning the correspondent stream.
     ///
     /// The main thread will block until `TcpStream` is dropped.
