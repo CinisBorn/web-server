@@ -2,7 +2,6 @@
 
 use http_core::response::{Response, ResponseData, StatusCode};
 use server::Router;
-
 use server::Server;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,6 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut response = Response::new();
         response.set_status(StatusCode::Ok);
         response.set_body(Some(b"Everything is OK"));
+        
         response
     });
 
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         response
     });
     
-    Server::new().start(router)?;
+    Server::new("127.0.0.1:7878").start(router)?;
 
     Ok(())
 }

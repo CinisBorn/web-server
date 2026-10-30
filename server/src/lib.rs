@@ -22,7 +22,7 @@
 //!        response
 //!    });
 //!    
-//!    Server::new().start(router)?;
+//!    Server::new("127.0.0.1:8080").start(router)?;
 //!
 //!    Ok(())
 //!}
@@ -40,10 +40,10 @@
 //! it creates 10 worker threads. Use [Server::set_workers] to configure the
 //! number of workers before starting the server.
 
-use connection::Connection;
+use connection::PersistentConnection;
 pub use routing::Router;
 
-use std::{net::TcpListener, sync::Arc};
+use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc};
 
 use crate::pool::ThreadPool;
 
@@ -51,20 +51,22 @@ mod pool;
 
 /// The server
 #[allow(missing_debug_implementations)]
-pub struct Server {
+pub struct Server<A: ToSocketAddrs> {
     workers: usize,
+    addr: A
 }
 
-impl Server {
+impl<A: ToSocketAddrs> Server<A> {
     /// Creates a new instance of [`Server`].
-    pub fn new() -> Self {
+    pub fn new(addr: A) -> Self {
         Self {
             workers: 10,
+            addr: addr
         }
     }
 }
 // GENERAL SERVER RELATED IMPLEMENTATIONS
-impl Server {
+impl<A: ToSocketAddrs> Server<A> {
     /// Starts the server.
     ///
     /// Note you must set endpoints before start the server.
@@ -90,7 +92,7 @@ impl Server {
     ///        response
     ///    });
     ///    
-    ///    Server::new().start(router)?;
+    ///    Server::new("127.0.0.1:8080").start(router)?;
     ///
     ///    Ok(())
     ///}
@@ -101,12 +103,12 @@ impl Server {
     /// An error is returned if it's not possible establish a
     /// connection successfully.
     pub fn start(&self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = Connection::new()?;
+        let conn = PersistentConnection::new(&self.addr)?;
         let router = Arc::new(router);
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
-
+        
         loop {
-            let stream = conn.connect()?;
+            let stream = conn.listener().accept()?.0;
             pool.execute(pool::Message::NewJob(stream));
         }
     }
@@ -117,18 +119,18 @@ impl Server {
         router: Router, 
         listener: TcpListener
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = Connection::with_listener(listener)?;
+        let conn = PersistentConnection::new_with_listener(listener);
         let router = Arc::new(router);
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
 
         loop {
-            let stream = conn.connect()?;
+            let stream = conn.listener().accept()?.0;
             pool.execute(pool::Message::NewJob(stream));
         }
     }
 }
 // SERVER'S CONFIGURATIONS RELATED IMPLEMENTATIONS
-impl Server {
+impl<A: ToSocketAddrs> Server<A> {
     /// Returns how much workers will be spawned when the server starts. By default
     /// `10` workers are spawned.
     ///

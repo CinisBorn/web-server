@@ -5,7 +5,12 @@ version = 4
 [[package]]
 name = "connection"
 version = "0.1.0"
-source = "git+https://github.com/CinisBorn/tcp-connection.git#2f3bce70c74a9f86d4044b319c2918d2e363239f"
+source = "git+https://github.com/CinisBorn/tcp-connection.git?tag=v0.1.0#36c5425733dbaad11695ceb119c6a8caf9e8b7ac"
+
+[[package]]
+name = "http-core"
+version = "0.1.0"
+source = "git+https://github.com/CinisBorn/http-core.git?tag=v0.1.0#3f8011a35f65c962eeb7da814cc7862d69f9da02"
 
 [[package]]
 name = "http-core"
@@ -15,18 +20,26 @@ source = "git+https://github.com/CinisBorn/http-core#3a13a015a107a1ceb8f73355c11
 [[package]]
 name = "http-parser"
 version = "0.1.0"
-source = "git+https://github.com/CinisBorn/http-parser.git#9756cb12aef63d4a95757e0b5847546db6cdd819"
+source = "git+https://github.com/CinisBorn/http-parser.git?tag=v0.0.1#165571c04ec536a6c9b716f6dda4dc74b6da2d48"
 dependencies = [
- "http-core",
+ "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core)",
+]
+
+[[package]]
+name = "http-parser"
+version = "0.1.0"
+source = "git+https://github.com/CinisBorn/http-parser.git?tag=v0.1.0#83c6e3adb65b01edec61b09b16460ef8e025df7b"
+dependencies = [
+ "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.1.0)",
 ]
 
 [[package]]
 name = "routing"
 version = "0.1.0"
-source = "git+https://github.com/CinisBorn/http-router.git#e6dcff2a0e8ea5db1e4448ccb80cf0198ff29f09"
+source = "git+https://github.com/CinisBorn/http-router.git?tag=v0.1.0#8bee1d68632b128fb0bb2000fc1aab1c9c8c80ee"
 dependencies = [
- "http-core",
- "http-parser",
+ "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.1.0)",
+ "http-parser 0.1.0 (git+https://github.com/CinisBorn/http-parser.git?tag=v0.0.1)",
 ]
 
 [[package]]
@@ -34,7 +47,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "connection",
- "http-core",
- "http-parser",
+ "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.1.0)",
+ "http-parser 0.1.0 (git+https://github.com/CinisBorn/http-parser.git?tag=v0.1.0)",
  "routing",
 ]

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-connection  = { git = "https://github.com/CinisBorn/tcp-connection.git" }
-http-parser = { git = "https://github.com/CinisBorn/http-parser.git "}
-routing = { git = "https://github.com/CinisBorn/http-router.git"}
-http-core = { git = "https://github.com/CinisBorn/http-core"}
+connection  = { git = "https://github.com/CinisBorn/tcp-connection.git", tag="v0.1.0"}
+http-parser = { git = "https://github.com/CinisBorn/http-parser.git",    tag="v0.1.0"}
+routing = { git = "https://github.com/CinisBorn/http-router.git",        tag="v0.1.0"} 
+http-core = { git = "https://github.com/CinisBorn/http-core.git",        tag="v0.1.0"}

@@ -27,7 +27,7 @@ fn run() {
         });
         
         std::thread::spawn(move || {
-            Server::new().start_with_listener(router, listener).unwrap();
+            Server::new(DEFAULT_ADDR).start_with_listener(router, listener).unwrap();
         });
 
         true

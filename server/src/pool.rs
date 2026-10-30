@@ -8,11 +8,16 @@
 //! it is dropped.
 
 use std::collections::HashMap;
-use std::sync::mpsc::{self, Receiver, TrySendError};
+use std::net::TcpStream;
+use std::sync::mpsc::{
+    Receiver, 
+    TrySendError, 
+    SyncSender, 
+    sync_channel
+};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-
-use connection::Stream;
+use std::io::Write;
 
 use http_core::response::{Response, ResponseData};
 use http_core::Method;
@@ -24,7 +29,7 @@ use routing::Router;
 
 type Workers = Vec<JoinHandle<()>>;
 /// Shared receiver used by workers to retrieve pool messages.
-type SharedReceiver<T> = Arc<Mutex<Receiver<Message<T>>>>;
+type SharedReceiver = Arc<Mutex<Receiver<Message<TcpStream>>>>;
 
 /// Protocol commucation among workers
 pub(crate) enum Message<T> {
@@ -35,26 +40,26 @@ pub(crate) enum Message<T> {
 }
 
 /// A thread pool for workers management.
-pub(crate) struct ThreadPool<T: Stream + Send + 'static> {
+pub(crate) struct ThreadPool {
     workers: Workers,
-    sender: mpsc::SyncSender<Message<T>>,
+    sender: SyncSender<Message<TcpStream>>,
 }
 
-impl<T: Stream + Send + 'static> ThreadPool<T> {
+impl ThreadPool {
     /// Submits a message to the worker pool.
     ///
     /// # Panics
     ///
     /// Panics if all receivers have been dropped and the message cannot
     /// be sent.
-    pub(crate) fn execute(&self, message: Message<T>) {
+    pub(crate) fn execute(&self, message: Message<TcpStream>) {
         use http_core::response::StatusCode::ServiceUnavailable;
 
         match self.sender.try_send(message) {
             Err(TrySendError::Full(Message::NewJob(mut stream))) => {
                 let mut response = Response::new();
                 response.set_status(ServiceUnavailable);
-                stream.send_response(&response.service_unavailable());
+                _ = stream.write_all(&response.service_unavailable());
             }
         
             Err(TrySendError::Disconnected(_)) => {
@@ -82,7 +87,7 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
     pub(crate) fn new(size: usize, router: Arc<Router>) -> Self {
         assert!(size > 0);
 
-        let (sender, receiver) = mpsc::sync_channel::<Message<T>>(size);
+        let (sender, receiver) = sync_channel::<Message<TcpStream>>(size);
         let receiver = Arc::new(Mutex::new(receiver));
         
         let mut workers = Vec::new();
@@ -100,7 +105,7 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
     }
 
     /// Starts a worker that receives and processes pool messages.
-    fn spawn_thread(rx: SharedReceiver<T>, router: Arc<Router>) -> JoinHandle<()> {
+    fn spawn_thread(rx: SharedReceiver, router: Arc<Router>) -> JoinHandle<()> {
         std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
@@ -116,7 +121,7 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
     }
 
     fn finish_worker_job(
-        stream: &mut T,
+        stream: &mut TcpStream,
         res: &mut Response,
         closure: Option<&str>, 
         method: &Method
@@ -132,8 +137,8 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
                 
                 res.set_headers(headers);
 
-                stream.send_response(&res.serialize(&method));
-                stream.stream_mut().shutdown(std::net::Shutdown::Write).unwrap();
+                _ = stream.write_all(&res.serialize(&method));
+                stream.shutdown(std::net::Shutdown::Write).unwrap();
                 
                 true
             } else {
@@ -144,9 +149,9 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
         }
     }
 
-    fn handle_connection(stream: &mut T, router: &Arc<Router>) {
+    fn handle_connection(stream: &mut TcpStream, router: &Arc<Router>) {
         loop {
-            let req = parse_req(stream.stream_mut()).unwrap();
+            let req = parse_req(stream).unwrap();
             let ParserState::Complete(req) = req else { break };
 
             let req_method = req.start_line().method();
@@ -166,12 +171,12 @@ impl<T: Stream + Send + 'static> ThreadPool<T> {
                 break
             }
             
-            stream.send_response(&res.serialize(req_method));                           
+            _ = stream.write_all(&res.serialize(req_method));                           
         }
     }
 }
 
-impl<T: Stream + Send + 'static> Drop for ThreadPool<T> {
+impl Drop for ThreadPool {
     fn drop(&mut self) {
         for _ in &self.workers {
             self.sender.send(Message::Shutdown).unwrap();
