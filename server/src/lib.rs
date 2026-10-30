@@ -44,7 +44,7 @@ use connection::PersistentConnection;
 pub use routing::Router;
 
 use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc};
-
+use std::io::ErrorKind;
 use crate::pool::ThreadPool;
 
 mod pool;
@@ -97,9 +97,16 @@ impl<A: ToSocketAddrs> Server<A> {
     ///    Ok(())
     ///}
     /// ```
-    ///
+    /// If the connection is interrupted, the server will retry to accept incoming 
+    /// requests.
+    /// 
+    /// if the connection is aborted, the server logs an error message on console 
+    /// and continues accepting incoming requests.
+    /// 
     /// # Errors
-    ///
+    /// 
+
+    /// 
     /// An error is returned if it's not possible establish a
     /// connection successfully.
     pub fn start(&self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
@@ -108,8 +115,26 @@ impl<A: ToSocketAddrs> Server<A> {
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
         
         loop {
-            let stream = conn.listener().accept()?.0;
-            pool.execute(pool::Message::NewJob(stream));
+            match conn.listener().accept() {
+                Ok((stream, _)) => {
+                    pool.execute(pool::Message::NewJob(stream));
+                }
+        
+                Err(e) => match e.kind() {
+                    ErrorKind::Interrupted => {
+                        continue;
+                    }
+        
+                    ErrorKind::ConnectionAborted => {
+                        eprintln!("Incoming connection aborted: {e}");
+                        continue;
+                    }
+        
+                    _ => {
+                        return Err(e.into());
+                    }
+                },
+            }
         }
     }
 
@@ -124,8 +149,26 @@ impl<A: ToSocketAddrs> Server<A> {
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
 
         loop {
-            let stream = conn.listener().accept()?.0;
-            pool.execute(pool::Message::NewJob(stream));
+            match conn.listener().accept() {
+                Ok((stream, _)) => {
+                    pool.execute(pool::Message::NewJob(stream));
+                }
+        
+                Err(e) => match e.kind() {
+                    ErrorKind::Interrupted => {
+                        continue;
+                    }
+        
+                    ErrorKind::ConnectionAborted => {
+                        eprintln!("Incoming connection aborted: {e}");
+                        continue;
+                    }
+        
+                    _ => {
+                        return Err(e.into());
+                    }
+                },
+            }
         }
     }
 }
