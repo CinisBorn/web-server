@@ -41,7 +41,13 @@
 //! number of workers before starting the server.
 
 use connection::PersistentConnection;
+
 pub use routing::Router;
+pub use http_core::{
+    Method,
+    response::{Response, StatusCode} ,
+    request::{Request, RequestLine, HttpVersion}
+};
 
 use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc};
 use std::io::ErrorKind;
@@ -104,8 +110,6 @@ impl<A: ToSocketAddrs> Server<A> {
     /// and continues accepting incoming requests.
     /// 
     /// # Errors
-    /// 
-
     /// 
     /// An error is returned if it's not possible establish a
     /// connection successfully.
