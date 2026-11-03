@@ -42,10 +42,12 @@
 
 use connection::PersistentConnection;
 
+// re-exports
+pub use http_parser::response::SerializeResponse;
 pub use routing::Router;
 pub use http_core::{
     Method,
-    response::{Response, StatusCode} ,
+    response::{Response, StatusCode, ResponseData} ,
     request::{Request, RequestLine, HttpVersion}
 };
 
