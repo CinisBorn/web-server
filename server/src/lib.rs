@@ -43,7 +43,10 @@
 use connection::PersistentConnection;
 
 // re-exports
-pub use http_parser::response::SerializeResponse;
+pub use http_parser::{
+    parse_req,
+    response::SerializeResponse
+};
 pub use routing::Router;
 pub use http_core::{
     Method,
