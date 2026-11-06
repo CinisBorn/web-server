@@ -39,6 +39,13 @@
 //! The server uses a thread pool to process incoming connections. By default,
 //! it creates 10 worker threads. Use [Server::set_workers] to configure the
 //! number of workers before starting the server.
+//! 
+//! The server establishes a timeout for read and write operations. By default, both
+//! read and write operations can wait for `5` seconds. 
+//! 
+//! Once the timeout is triggered, the client will receive an HTTP response 
+//! containing more information about it. Use [`Server::set_read_timeout`] and 
+//! [`Server::set_write_timeout`] to configure the timeout value.
 
 use connection::PersistentConnection;
 
@@ -54,7 +61,7 @@ pub use http_core::{
     request::{Request, RequestLine, HttpVersion}
 };
 
-use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc};
+use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc, time::Duration};
 use std::io::ErrorKind;
 use crate::pool::ThreadPool;
 
@@ -64,7 +71,9 @@ mod pool;
 #[allow(missing_debug_implementations)]
 pub struct Server<A: ToSocketAddrs> {
     workers: usize,
-    addr: A
+    addr: A,
+    read_timeout: Duration,
+    write_timeout: Duration
 }
 
 impl<A: ToSocketAddrs> Server<A> {
@@ -72,7 +81,9 @@ impl<A: ToSocketAddrs> Server<A> {
     pub fn new(addr: A) -> Self {
         Self {
             workers: 10,
-            addr: addr
+            addr: addr,
+            read_timeout: Duration::from_secs(5),
+            write_timeout: Duration::from_secs(5)
         }
     }
 }
@@ -126,6 +137,16 @@ impl<A: ToSocketAddrs> Server<A> {
         loop {
             match conn.listener().accept() {
                 Ok((stream, _)) => {
+                    if let Err(_) = stream.set_read_timeout(Some(self.read_timeout)) {
+                        let time = Duration::from_secs(5);
+                        stream.set_read_timeout(Some(time)).unwrap()
+                    }
+
+                    if let Err(_) = stream.set_write_timeout(Some(self.write_timeout)) {
+                        let time = Duration::from_secs(5);
+                        stream.set_write_timeout(Some(time)).unwrap()
+                    }
+                    
                     pool.execute(pool::Message::NewJob(stream));
                 }
         
@@ -194,5 +215,15 @@ impl<A: ToSocketAddrs> Server<A> {
     /// Sets the number of workers, overwriting the defaut value (`10`).
     pub fn set_workers(&mut self, size: usize) {
         self.workers = size;
+    }
+
+    /// Sets a timeout to read operations. 
+    pub fn set_read_timeout(&mut self, value: Duration) {
+        self.read_timeout = value
+    }
+
+    /// Sets a timeout to write operations. 
+    pub fn set_write_timeout(&mut self, value: Duration) {
+        self.write_timeout = value
     }
 }
