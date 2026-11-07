@@ -73,7 +73,8 @@ pub struct Server<A: ToSocketAddrs> {
     workers: usize,
     addr: A,
     read_timeout: Duration,
-    write_timeout: Duration
+    write_timeout: Duration,
+    listener: Option<TcpListener>
 }
 
 impl<A: ToSocketAddrs> Server<A> {
@@ -83,7 +84,8 @@ impl<A: ToSocketAddrs> Server<A> {
             workers: 10,
             addr: addr,
             read_timeout: Duration::from_secs(5),
-            write_timeout: Duration::from_secs(5)
+            write_timeout: Duration::from_secs(5),
+            listener: None
         }
     }
 }
@@ -129,55 +131,15 @@ impl<A: ToSocketAddrs> Server<A> {
     /// 
     /// An error is returned if it's not possible establish a
     /// connection successfully.
-    pub fn start(&self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = PersistentConnection::new(&self.addr)?;
+    pub fn start(&mut self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
+        let conn = match self.listener.take() {
+            Some(l) => PersistentConnection::new_with_listener(l),
+            None =>  PersistentConnection::new(&self.addr)?
+        };
+        
         let router = Arc::new(router);
         let pool = ThreadPool::new(self.workers, Arc::clone(&router));
         
-        loop {
-            match conn.listener().accept() {
-                Ok((stream, _)) => {
-                    if let Err(_) = stream.set_read_timeout(Some(self.read_timeout)) {
-                        let time = Duration::from_secs(5);
-                        stream.set_read_timeout(Some(time)).unwrap()
-                    }
-
-                    if let Err(_) = stream.set_write_timeout(Some(self.write_timeout)) {
-                        let time = Duration::from_secs(5);
-                        stream.set_write_timeout(Some(time)).unwrap()
-                    }
-                    
-                    pool.execute(pool::Message::NewJob(stream));
-                }
-        
-                Err(e) => match e.kind() {
-                    ErrorKind::Interrupted => {
-                        continue;
-                    }
-        
-                    ErrorKind::ConnectionAborted => {
-                        eprintln!("Incoming connection aborted: {e}");
-                        continue;
-                    }
-        
-                    _ => {
-                        return Err(e.into());
-                    }
-                },
-            }
-        }
-    }
-
-    /// Starts the server with a given [`TcpListener`].
-    pub fn start_with_listener(
-        &self, 
-        router: Router, 
-        listener: TcpListener
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = PersistentConnection::new_with_listener(listener);
-        let router = Arc::new(router);
-        let pool = ThreadPool::new(self.workers, Arc::clone(&router));
-
         loop {
             match conn.listener().accept() {
                 Ok((stream, _)) => {
@@ -235,5 +197,9 @@ impl<A: ToSocketAddrs> Server<A> {
     /// Sets a timeout to write operations. 
     pub fn set_write_timeout(&mut self, value: Duration) {
         self.write_timeout = value
+    }
+
+    pub fn set_listener(&mut self, listener: TcpListener) {
+        self.listener = Some(listener)
     }
 }

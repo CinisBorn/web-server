@@ -26,9 +26,10 @@ fn run() {
         });
 
         std::thread::spawn(move || {
-            Server::new(ADDR)
-               .start_with_listener(router, listener)
-               .unwrap(); 
+            let mut server = Server::new(ADDR);
+
+            server.set_listener(listener);
+            server.start(router).unwrap();
         });
 
         true

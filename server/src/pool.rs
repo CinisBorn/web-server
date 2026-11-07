@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use http_core::Method;
-use http_core::response::{Response, ResponseData, StatusCode};
+use http_core::response::{Response, ResponseData};
 
 use http_parser::error::ParserErr;
 use http_parser::response::SerializeResponse;
