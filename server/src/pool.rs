@@ -8,22 +8,18 @@
 //! it is dropped.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::net::TcpStream;
-use std::sync::mpsc::{
-    Receiver, 
-    TrySendError, 
-    SyncSender, 
-    sync_channel
-};
+use std::sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::io::Write;
 
-use http_core::response::{Response, ResponseData};
 use http_core::Method;
+use http_core::response::{Response, ResponseData, StatusCode};
 
-use http_parser::{parse_req, ParserState};
+use http_parser::error::ParserErr;
 use http_parser::response::SerializeResponse;
+use http_parser::{ParserState, parse_req};
 
 use routing::Router;
 
@@ -61,11 +57,11 @@ impl ThreadPool {
                 response.set_status(ServiceUnavailable);
                 _ = stream.write_all(&response.service_unavailable());
             }
-        
+
             Err(TrySendError::Disconnected(_)) => {
                 // The receiver has disconnected.
                 // Log the failure or handle it appropriately.
-            },
+            }
 
             _ => {}
         }
@@ -89,7 +85,7 @@ impl ThreadPool {
 
         let (sender, receiver) = sync_channel::<Message<TcpStream>>(size);
         let receiver = Arc::new(Mutex::new(receiver));
-        
+
         let mut workers = Vec::new();
 
         for _ in 0..size {
@@ -123,23 +119,20 @@ impl ThreadPool {
     fn finish_worker_job(
         stream: &mut TcpStream,
         res: &mut Response,
-        closure: Option<&str>, 
-        method: &Method
+        closure: Option<&str>,
+        method: &Method,
     ) -> bool {
         if let Some(value) = closure {
             if value == "close" {
                 let mut headers = HashMap::new();
 
-                headers.insert(
-                    "Connection".to_string(), 
-                    "close".to_string()
-                );
-                
+                headers.insert("Connection".to_string(), "close".to_string());
+
                 res.set_headers(headers);
 
                 _ = stream.write_all(&res.serialize(&method));
                 stream.shutdown(std::net::Shutdown::Write).unwrap();
-                
+
                 true
             } else {
                 false
@@ -151,28 +144,75 @@ impl ThreadPool {
 
     fn handle_connection(stream: &mut TcpStream, router: &Arc<Router>) {
         loop {
-            let req = parse_req(stream).unwrap();
-            let ParserState::Complete(req) = req else { break };
+            let req = match parse_req(stream, None) {
+                Ok(r) => r,
+                Err(err) => {
+                    Self::send_error_and_close(stream, &err);
+                    break
+                },
+            };
+
+            let ParserState::Complete(req) = req else {
+                break;
+            };
 
             let req_method = req.start_line().method();
             let closure = req.connection();
             let router = router;
-        
+
             let mut res = router.match_route(&req);
-            
-            let finish_work = Self::finish_worker_job(
-                stream, 
-                &mut res, 
-                closure, 
-                req_method
-            );
-            
+
+            let finish_work = Self::finish_worker_job(stream, &mut res, closure, req_method);
+
             if finish_work {
-                break
+                break;
             }
-            
-            _ = stream.write_all(&res.serialize(req_method));                           
+
+            _ = stream.write_all(&res.serialize(req_method));
         }
+    }
+}
+
+impl ThreadPool {
+    /// Sends an HTTP response with information about the error cause, then
+    /// closes the connection.
+    fn send_error_and_close(
+        stream: &mut TcpStream,
+        err: &ParserErr
+    ) {
+        use std::io::ErrorKind;
+        use http_core::response::StatusCode as Code;
+        
+        let mut res = Response::new();
+
+        match err {
+            ParserErr::ConflictingBodyFraming => res.set_status(Code::BadRequest),
+            ParserErr::ContentTooLarge(_) => res.set_status(Code::ContentTooLarge),
+            ParserErr::InvalidInput(_) => res.set_status(Code::BadRequest),
+            ParserErr::InvalidTransferEncoding(_) => res.set_status(Code::NotImplemented),
+            ParserErr::UnsupportedHttpVersion(_) => res.set_status(Code::HttpVersionNotSupported),
+            ParserErr::Io(err) => match err.kind() {
+                ErrorKind::WouldBlock => res.set_status(Code::RequestTimeout),
+                ErrorKind::TimedOut => res.set_status(Code::RequestTimeout),
+                _ => res.set_status(Code::BadRequest),
+            },
+            ParserErr::TooLong(code) => match code {
+                431 => res.set_status(Code::RequestHeaderFieldsTooLarge),
+                414 => res.set_status(Code::UriTooLong),
+                _ => res.set_status(Code::BadRequest),
+            },
+            ParserErr::TooManyItems(code) => match code {
+                431 => res.set_status(Code::RequestHeaderFieldsTooLarge),
+                _ => res.set_status(Code::BadRequest)
+            }
+        }
+
+        Self::finish_worker_job(
+            stream, 
+            &mut res, 
+            Some("close"), 
+            &Method::GET
+        );
     }
 }
 
