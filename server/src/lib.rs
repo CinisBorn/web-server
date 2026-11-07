@@ -181,6 +181,16 @@ impl<A: ToSocketAddrs> Server<A> {
         loop {
             match conn.listener().accept() {
                 Ok((stream, _)) => {
+                    if let Err(_) = stream.set_read_timeout(Some(self.read_timeout)) {
+                        let time = Duration::from_secs(5);
+                        stream.set_read_timeout(Some(time)).unwrap()
+                    }
+
+                    if let Err(_) = stream.set_write_timeout(Some(self.write_timeout)) {
+                        let time = Duration::from_secs(5);
+                        stream.set_write_timeout(Some(time)).unwrap()
+                    }
+                    
                     pool.execute(pool::Message::NewJob(stream));
                 }
         
