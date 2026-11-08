@@ -91,46 +91,22 @@ impl<A: ToSocketAddrs> Server<A> {
 }
 // GENERAL SERVER RELATED IMPLEMENTATIONS
 impl<A: ToSocketAddrs> Server<A> {
-    /// Starts the server.
+    /// Starts the HTTP server and begins accepting incoming connections.
     ///
-    /// Note you must set endpoints before start the server.
-    /// Otherwise, the server won't match against any route.
-    /// ```no_run
-    /// # use http_core::response::{Response, ResponseData, StatusCode};
-    /// # use server::Router;
-    /// # use server::Server;
-    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///    let mut router = Router::new();
+    /// If a listener has already been configured, it will be reused.
+    /// Otherwise, a new listener will be bound to the server's configured address.
     ///
-    ///    router.get("/test", |_| {
-    ///        let mut response = Response::new();
-    ///        response.set_status(StatusCode::Ok);
-    ///        response.set_body(Some(b"Everything is OK"));
-    ///        response
-    ///    });
-    ///
-    ///    router.head("/test", |_| {
-    ///        let mut response = Response::new();
-    ///        response.set_status(StatusCode::Ok);
-    ///
-    ///        response
-    ///    });
-    ///    
-    ///    Server::new("127.0.0.1:8080").start(router)?;
-    ///
-    ///    Ok(())
-    ///}
-    /// ```
-    /// If the connection is interrupted, the server will retry to accept incoming 
-    /// requests.
-    /// 
-    /// if the connection is aborted, the server logs an error message on console 
-    /// and continues accepting incoming requests.
-    /// 
     /// # Errors
-    /// 
-    /// An error is returned if it's not possible establish a
-    /// connection successfully.
+    ///
+    /// Returns an error if:
+    /// - Binding a new listener to the configured address fails.
+    /// - Accepting an incoming connection fails with an error other than
+    ///   [`ErrorKind::Interrupted`] or [`ErrorKind::ConnectionAborted`].
+    ///
+    /// # Behavior
+    ///
+    /// This method runs indefinitely, continuously accepting incoming
+    /// connections. It does not return `Ok(())` during normal operation.
     pub fn start(&mut self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
         let conn = match self.listener.take() {
             Some(l) => PersistentConnection::new_with_listener(l),
