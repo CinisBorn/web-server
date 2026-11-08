@@ -61,7 +61,7 @@ pub use http_core::{
     request::{Request, RequestLine, HttpVersion}
 };
 
-use std::{net::{TcpListener, ToSocketAddrs}, sync::Arc, time::Duration};
+use std::{net::{TcpListener, TcpStream, ToSocketAddrs}, sync::Arc, time::Duration};
 use std::io::ErrorKind;
 use crate::pool::ThreadPool;
 
@@ -119,15 +119,11 @@ impl<A: ToSocketAddrs> Server<A> {
         loop {
             match conn.listener().accept() {
                 Ok((stream, _)) => {
-                    if let Err(_) = stream.set_read_timeout(Some(self.read_timeout)) {
-                        let time = Duration::from_secs(5);
-                        stream.set_read_timeout(Some(time)).unwrap()
-                    }
-
-                    if let Err(_) = stream.set_write_timeout(Some(self.write_timeout)) {
-                        let time = Duration::from_secs(5);
-                        stream.set_write_timeout(Some(time)).unwrap()
-                    }
+                    Self::set_stream_timeout(
+                        &stream, 
+                        self.read_timeout, 
+                        self.write_timeout
+                    );
                     
                     pool.execute(pool::Message::NewJob(stream));
                 }
@@ -152,6 +148,27 @@ impl<A: ToSocketAddrs> Server<A> {
 }
 // SERVER'S CONFIGURATIONS RELATED IMPLEMENTATIONS
 impl<A: ToSocketAddrs> Server<A> {
+    /// Sets a timeout to read and write operations.
+    /// 
+    /// It handles a possible case where the caller pass `0` as 
+    /// value. It's an error. A default value is used instead.  
+    fn set_stream_timeout(
+        stream: &TcpStream, 
+        read_timeout: Duration, 
+        write_timeout: Duration
+    ) {
+
+        if let Err(_) = stream.set_read_timeout(Some(read_timeout)) {
+            let time = Duration::from_secs(5);
+            stream.set_read_timeout(Some(time)).unwrap()
+        }
+
+        if let Err(_) = stream.set_write_timeout(Some(write_timeout)) {
+            let time = Duration::from_secs(5);
+            stream.set_write_timeout(Some(time)).unwrap()
+        }
+    }
+    
     /// Returns the configured number of worker threads.
     /// 
     /// By default, the server is configured to spawn `10` workers.
@@ -172,6 +189,9 @@ impl<A: ToSocketAddrs> Server<A> {
     ///
     /// If a read operation exceeds this duration, the operation
     /// returns a timeout error. The connection may then be closed.
+    /// 
+    /// If the provided value is zero, the default value of `5` seconds is 
+    /// used.
     pub fn set_read_timeout(&mut self, value: Duration) {
         self.read_timeout = value
     }
@@ -180,6 +200,9 @@ impl<A: ToSocketAddrs> Server<A> {
     ///
     /// If a write operation exceeds this duration, the operation
     /// returns a timeout error. The connection may then be closed.
+    /// 
+    /// If the provided value is zero, the default value of `5` seconds is 
+    /// used.
     pub fn set_write_timeout(&mut self, value: Duration) {
         self.write_timeout = value
     }
