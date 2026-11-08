@@ -152,29 +152,43 @@ impl<A: ToSocketAddrs> Server<A> {
 }
 // SERVER'S CONFIGURATIONS RELATED IMPLEMENTATIONS
 impl<A: ToSocketAddrs> Server<A> {
-    /// Returns how much workers will be spawned when the server starts. By default
-    /// `10` workers are spawned.
-    ///
-    /// You overwrite the default value with [`set_workers`].
+    /// Returns the configured number of worker threads.
+    /// 
+    /// By default, the server is configured to spawn `10` workers.
+    /// The value can be changed using [`Server::set_workers`].
     pub fn workers(&self) -> usize {
         self.workers
     }
 
-    /// Sets the number of workers, overwriting the defaut value (`10`).
+    /// Sets the number of worker threads the server will spawn.
+    ///
+    /// No explicit upper limit is enforced by the server. However,
+    /// spawning too many workers may exhaust system resources.
     pub fn set_workers(&mut self, size: usize) {
         self.workers = size;
     }
 
-    /// Sets a timeout to read operations. 
+    /// Sets the timeout for read operations on client connections.
+    ///
+    /// If a read operation exceeds this duration, the operation
+    /// returns a timeout error. The connection may then be closed.
     pub fn set_read_timeout(&mut self, value: Duration) {
         self.read_timeout = value
     }
 
-    /// Sets a timeout to write operations. 
+    /// Sets the timeout for write operations on client connections.
+    ///
+    /// If a write operation exceeds this duration, the operation
+    /// returns a timeout error. The connection may then be closed.
     pub fn set_write_timeout(&mut self, value: Duration) {
         self.write_timeout = value
     }
 
+    /// Sets the TCP listener used by the server.
+    ///
+    /// The server takes ownership of the provided listener and uses it
+    /// to accept incoming connections. If no listener is provided,
+    /// the server creates and binds a new listener when started.
     pub fn set_listener(&mut self, listener: TcpListener) {
         self.listener = Some(listener)
     }
