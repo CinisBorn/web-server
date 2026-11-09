@@ -44,7 +44,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "connection",
  "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.2.0)",
