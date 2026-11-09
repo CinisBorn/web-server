@@ -115,30 +115,26 @@ impl ThreadPool {
         })
     }
 
-    fn finish_worker_job(
-        stream: &mut TcpStream,
-        res: &mut Response,
-        closure: Option<&str>,
-        method: &Method,
-    ) -> bool {
-        if let Some(value) = closure {
-            if value == "close" {
-                let mut headers = HashMap::new();
-
-                headers.insert("Connection".to_string(), "close".to_string());
-
-                res.set_headers(headers);
-
-                _ = stream.write_all(&res.serialize(&method));
-                stream.shutdown(std::net::Shutdown::Write).unwrap();
-
-                true
-            } else {
-                false
+    fn should_finish_worker(value: Option<&str>) -> bool {
+        if let Some(value) = value {
+            if value.to_lowercase() == "close" {
+                return true 
             }
-        } else {
-            false
-        }
+
+            return false
+        } 
+
+        false
+    }
+    
+    fn finish_worker(stream: &mut TcpStream, res: &mut Response,method: &Method) {
+        let mut headers = HashMap::new();
+        
+        headers.insert("Connection".to_string(), "close".to_string());  
+        res.set_headers(headers);   
+        
+        _ = stream.write_all(&res.serialize(&method));
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
     }
 
     fn handle_connection(stream: &mut TcpStream, router: &Arc<Router>) {
@@ -148,10 +144,9 @@ impl ThreadPool {
                 Err(err) => {
                     let mut res = err.new_response_err();
                     
-                    Self::finish_worker_job(
+                    Self::finish_worker(
                         stream, 
-                        &mut res, 
-                        Some("close"), 
+                        &mut res,  
                         &Method::GET
                     );
                     
@@ -164,14 +159,15 @@ impl ThreadPool {
             };
 
             let req_method = req.start_line().method();
-            let closure = req.connection();
+            
+            let finish_work = req.connection();
+            let finish_work = Self::should_finish_worker(finish_work);
+            
             let router = router;
-
             let mut res = router.match_route(&req);
 
-            let finish_work = Self::finish_worker_job(stream, &mut res, closure, req_method);
-
             if finish_work {
+                Self::finish_worker(stream, &mut res, req_method);
                 break;
             }
 
