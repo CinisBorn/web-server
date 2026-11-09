@@ -27,8 +27,8 @@ dependencies = [
 
 [[package]]
 name = "http-parser"
-version = "0.3.1"
-source = "git+https://github.com/CinisBorn/http-parser.git?tag=v0.4.0#8ea026587f05355accaf3ba760b88130580db6ad"
+version = "0.4.1"
+source = "git+https://github.com/CinisBorn/http-parser.git?tag=v0.4.1#682eefe7afa909c91012100ed830aba23727d010"
 dependencies = [
  "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.2.0)",
 ]
@@ -48,6 +48,6 @@ version = "0.1.0"
 dependencies = [
  "connection",
  "http-core 0.1.0 (git+https://github.com/CinisBorn/http-core.git?tag=v0.2.0)",
- "http-parser 0.3.1",
+ "http-parser 0.4.1",
  "routing",
 ]
