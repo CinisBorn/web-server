@@ -20,6 +20,8 @@ use http_core::response::{Response, ResponseData};
 use http_parser::response::SerializeResponse;
 use http_parser::{ParserState, parse_req};
 
+use crate::RequestConfig;
+
 use routing::Router;
 
 type Workers = Vec<JoinHandle<()>>;
@@ -79,7 +81,11 @@ impl ThreadPool {
     /// # Panics
     ///
     /// Panics if `size` is zero.
-    pub(crate) fn new(size: usize, router: Arc<Router>) -> Self {
+    pub(crate) fn new(
+        size: usize, 
+        router: Arc<Router>,
+        req_config: Arc<Option<RequestConfig>>
+    ) -> Self {
         assert!(size > 0);
 
         let (sender, receiver) = sync_channel::<Message<TcpStream>>(size);
@@ -90,8 +96,13 @@ impl ThreadPool {
         for _ in 0..size {
             let receiver = Arc::clone(&receiver);
             let router = Arc::clone(&router);
+            let req_config = Arc::clone(&req_config);
 
-            let handle = Self::spawn_thread(receiver, router);
+            let handle = Self::spawn_thread(
+                receiver, 
+                router, 
+                req_config
+            );
 
             workers.push(handle);
         }
@@ -100,14 +111,18 @@ impl ThreadPool {
     }
 
     /// Starts a worker that receives and processes pool messages.
-    fn spawn_thread(rx: SharedReceiver, router: Arc<Router>) -> JoinHandle<()> {
+    fn spawn_thread(
+        rx: SharedReceiver, 
+        router: Arc<Router>,
+        req_config: Arc<Option<RequestConfig>>
+    ) -> JoinHandle<()> {
         std::thread::spawn(move || {
             loop {
                 let request = rx.lock().unwrap().recv().unwrap();
 
                 match request {
                     Message::NewJob(mut stream) => {
-                        Self::handle_connection(&mut stream, &router);
+                        Self::handle_connection(&mut stream, &router, &req_config);
                     }
                     Message::Shutdown => break,
                 }
@@ -137,9 +152,18 @@ impl ThreadPool {
         stream.shutdown(std::net::Shutdown::Write).unwrap();
     }
 
-    fn handle_connection(stream: &mut TcpStream, router: &Arc<Router>) {
+    fn handle_connection(
+        stream: &mut TcpStream, 
+        router: &Arc<Router>,
+        req_config: &Arc<Option<RequestConfig>>
+    ) {
         loop {
-            let req = match parse_req(stream, None) {
+            // The first as_ref returns a referento to Request 
+            // Config (without the Arc wrapper). 
+            // 
+            // The second as_ref change &Option<T> to Option<&T>
+            let config = req_config.as_ref().as_ref();
+            let req = match parse_req(stream, config) {
                 Ok(r) => r,
                 Err(err) => {
                     let mut res = err.new_response_err();

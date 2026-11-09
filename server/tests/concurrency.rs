@@ -11,7 +11,7 @@ fn run() {
     SIGNAL.get_or_init(|| { 
         let mut router = Router::new();
         let listener = TcpListener::bind(DEFAULT_ADDR).unwrap();
-    
+
         router.get("/test", |_| {
             let mut response = Response::new();
             response.set_status(StatusCode::Ok);
@@ -30,7 +30,7 @@ fn run() {
             let mut server = Server::new(DEFAULT_ADDR);
 
             server.set_listener(listener);
-            server.start(router).unwrap();
+            server.start(router, None).unwrap();
         });
 
         true

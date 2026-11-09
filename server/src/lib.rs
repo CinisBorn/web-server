@@ -22,7 +22,7 @@
 //!        response
 //!    });
 //!    
-//!    Server::new("127.0.0.1:8080").start(router)?;
+//!    Server::new("127.0.0.1:8080").start(router, None)?;
 //!
 //!    Ok(())
 //!}
@@ -50,10 +50,10 @@
 use connection::PersistentConnection;
 
 // re-exports
-pub use http_parser::{
-    parse_req,
-    response::SerializeResponse
-};
+pub use http_parser::parse_req;
+pub use http_parser::response::SerializeResponse;
+pub use http_parser::ParserConfig as RequestConfig;
+
 pub use routing::Router;
 pub use http_core::{
     Method,
@@ -74,7 +74,7 @@ pub struct Server<A: ToSocketAddrs> {
     addr: A,
     read_timeout: Duration,
     write_timeout: Duration,
-    listener: Option<TcpListener>
+    listener: Option<TcpListener>,
 }
 
 impl<A: ToSocketAddrs> Server<A> {
@@ -85,7 +85,7 @@ impl<A: ToSocketAddrs> Server<A> {
             addr: addr,
             read_timeout: Duration::from_secs(5),
             write_timeout: Duration::from_secs(5),
-            listener: None
+            listener: None,
         }
     }
 }
@@ -107,14 +107,19 @@ impl<A: ToSocketAddrs> Server<A> {
     ///
     /// This method runs indefinitely, continuously accepting incoming
     /// connections. It does not return `Ok(())` during normal operation.
-    pub fn start(&mut self, router: Router) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn start(
+        &mut self, 
+        router: Router,
+        request_config: Option<RequestConfig>
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let conn = match self.listener.take() {
             Some(l) => PersistentConnection::new_with_listener(l),
             None =>  PersistentConnection::new(&self.addr)?
         };
-        
+
+        let req_config = Arc::new(request_config);
         let router = Arc::new(router);
-        let pool = ThreadPool::new(self.workers, Arc::clone(&router));
+        let pool = ThreadPool::new(self.workers, Arc::clone(&router), req_config);
         
         loop {
             match conn.listener().accept() {
