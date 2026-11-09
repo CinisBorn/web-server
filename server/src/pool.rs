@@ -17,7 +17,6 @@ use std::thread::JoinHandle;
 use http_core::Method;
 use http_core::response::{Response, ResponseData};
 
-use http_parser::error::ParserErr;
 use http_parser::response::SerializeResponse;
 use http_parser::{ParserState, parse_req};
 
@@ -147,7 +146,15 @@ impl ThreadPool {
             let req = match parse_req(stream, None) {
                 Ok(r) => r,
                 Err(err) => {
-                    Self::send_error_and_close(stream, &err);
+                    let mut res = err.new_response_err();
+                    
+                    Self::finish_worker_job(
+                        stream, 
+                        &mut res, 
+                        Some("close"), 
+                        &Method::GET
+                    );
+                    
                     break
                 },
             };
@@ -170,49 +177,6 @@ impl ThreadPool {
 
             _ = stream.write_all(&res.serialize(req_method));
         }
-    }
-}
-
-impl ThreadPool {
-    /// Sends an HTTP response with information about the error cause, then
-    /// closes the connection.
-    fn send_error_and_close(
-        stream: &mut TcpStream,
-        err: &ParserErr
-    ) {
-        use std::io::ErrorKind;
-        use http_core::response::StatusCode as Code;
-        
-        let mut res = Response::new();
-
-        match err {
-            ParserErr::ConflictingBodyFraming => res.set_status(Code::BadRequest),
-            ParserErr::ContentTooLarge(_) => res.set_status(Code::ContentTooLarge),
-            ParserErr::InvalidInput(_) => res.set_status(Code::BadRequest),
-            ParserErr::InvalidTransferEncoding(_) => res.set_status(Code::NotImplemented),
-            ParserErr::UnsupportedHttpVersion(_) => res.set_status(Code::HttpVersionNotSupported),
-            ParserErr::Io(err) => match err.kind() {
-                ErrorKind::WouldBlock => res.set_status(Code::RequestTimeout),
-                ErrorKind::TimedOut => res.set_status(Code::RequestTimeout),
-                _ => res.set_status(Code::BadRequest),
-            },
-            ParserErr::TooLong(code) => match code {
-                431 => res.set_status(Code::RequestHeaderFieldsTooLarge),
-                414 => res.set_status(Code::UriTooLong),
-                _ => res.set_status(Code::BadRequest),
-            },
-            ParserErr::TooManyItems(code) => match code {
-                431 => res.set_status(Code::RequestHeaderFieldsTooLarge),
-                _ => res.set_status(Code::BadRequest)
-            }
-        }
-
-        Self::finish_worker_job(
-            stream, 
-            &mut res, 
-            Some("close"), 
-            &Method::GET
-        );
     }
 }
 
